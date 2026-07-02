@@ -11,7 +11,11 @@ FocusForge is a Stellar Soroban mini-dApp for tracking deep-work time on-chain. 
 
 ## UI Preview
 
-![FocusForge UI](./ui-focusforge.svg)
+![FocusForge UI](./UI.png)
+
+## Demo Recording
+
+<video src="./screenrecord.mp4" controls width="100%"></video>
 
 ## Deployment Details
 
