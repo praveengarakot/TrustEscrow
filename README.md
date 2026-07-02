@@ -226,7 +226,6 @@ VITE_CONTRACT_ID=CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U
 
 ## Notes
 
-- This repository is an independent clone of the original project with a new visual identity and a dedicated Soroban deployment.
 - Freighter must be installed in the browser to submit transactions from the frontend.
 - If Brave blocks Freighter injection on localhost, Chrome or Edge may be more reliable for the demo flow.
 

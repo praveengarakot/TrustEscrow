@@ -373,9 +373,8 @@ export default function App() {
           </div>
 
           <p className="lead">
-            A fresh clone of the original project with a new identity for makers, builders, and
-            research teams who want deep work logged on Stellar with clean weekly targets and
-            visible streak momentum.
+            A focused on-chain workspace for makers, builders, and research teams who want deep
+            work logged on Stellar with clean weekly targets and visible streak momentum.
           </p>
 
           <div className="hero-actions">
@@ -391,9 +390,9 @@ export default function App() {
                   : "Connect Freighter"}
             </button>
             <div className="hero-badges">
-              <span className="pill">Soroban clone</span>
-              <span className="pill">Independent deploy</span>
-              <span className="pill">Same contract flow</span>
+              <span className="pill">Soroban powered</span>
+              <span className="pill">Freighter ready</span>
+              <span className="pill">Weekly streaks</span>
             </div>
           </div>
         </div>
@@ -430,8 +429,8 @@ export default function App() {
           </div>
 
           <p className="hero-note">
-            Clone-first architecture, sharper UX, and a dedicated contract alias so this version
-            runs independently from the original build.
+            Built for focused operators with a crisp dashboard, wallet-based actions, and direct
+            Soroban writes on Stellar Testnet.
           </p>
         </div>
       </header>
@@ -446,7 +445,7 @@ export default function App() {
                 : txState.message ||
                   (hasContractConfig()
                     ? "Ready to read and write focus sessions on Stellar."
-                    : "Deploy the cloned Soroban contract and export the frontend config before using this version."))}
+                    : "Deploy the Soroban contract and export the frontend config before using the app."))}
           </p>
         </div>
         {txExplorerLink ? (
@@ -500,8 +499,8 @@ export default function App() {
       {!hasContractConfig() ? (
         <Panel
           eyebrow="Deployment runway"
-          title="One deploy gives this clone its own ledger"
-          body="The frontend is already wired. Build the Rust contract, deploy with Stellar CLI, and export the fresh contract ID so this version stays isolated from the original project."
+          title="Deploy the ledger and connect the app"
+          body="The frontend is already wired. Build the Rust contract, deploy with Stellar CLI, and export the contract ID so the app can read and write on-chain."
           tone="mint"
         >
           <div className="code-stack">
@@ -665,16 +664,16 @@ export default function App() {
         </Panel>
 
         <Panel
-          eyebrow="Independent clone"
-          title="What changed in this version"
-          body="Same Soroban functionality, but a new visual system, new package identity, and a dedicated deployment pipeline for its own contract address."
+          eyebrow="Platform overview"
+          title="How FocusForge works"
+          body="FocusForge combines Freighter wallet access, Soroban contract writes, and a streamlined dashboard for tracking deep-work sessions on Stellar."
           tone="mint"
         >
           <ul className="check-list">
-            <li>Fresh brand identity: FocusForge</li>
-            <li>Dedicated contract alias and deployment record</li>
-            <li>Refreshed UI theme, spacing, typography, and card system</li>
-            <li>Frontend still uses Freighter, Soroban RPC, and on-chain writes</li>
+            <li>Connect a Freighter wallet on Stellar Testnet</li>
+            <li>Create a profile and set a weekly focus target</li>
+            <li>Log verified deep-work sessions on-chain</li>
+            <li>Track weekly progress, totals, and streak momentum</li>
           </ul>
         </Panel>
       </section>
