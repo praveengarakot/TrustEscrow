@@ -4,7 +4,7 @@ FocusForge is a Stellar Soroban mini-dApp for tracking deep-work time on-chain. 
 
 ## Submission Links
 
-- Demo capture: generate a fresh FocusForge walkthrough locally if you need an updated submission video
+- Demo recording: [screenrecord.mp4](./screenrecord.mp4)
 - Stellar Lab contract page: `https://lab.stellar.org/r/testnet/contract/CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U`
 - Testnet transaction 1: `https://stellar.expert/explorer/testnet/tx/94db57b61c4550ca5f7a214cbaa66715f60de87a3278a7d8179669c52011e5a5`
 - Testnet transaction 2: `https://stellar.expert/explorer/testnet/tx/a8102bb5301718e04ab29082ac40ea4b828259c22ab7a7ad5282d3f91050571a`
