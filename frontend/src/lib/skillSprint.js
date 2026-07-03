@@ -5,8 +5,7 @@ import {
   setAllowed,
   signTransaction
 } from "@stellar/freighter-api";
-import { contract as StellarContract } from "@stellar/stellar-sdk";
-import { focusForgeConfig } from "./contract-config";
+import { focusForgeConfig } from "./contract-config.js";
 
 const networkLabels = {
   "Public Global Stellar Network ; September 2015": "Stellar Mainnet",
@@ -22,6 +21,16 @@ export const configuredNetworkPassphrase =
 export const configuredRpcUrl =
   import.meta.env.VITE_STELLAR_RPC_URL || "https://soroban-testnet.stellar.org";
 
+let stellarSdkPromise;
+
+async function loadStellarSdk() {
+  if (!stellarSdkPromise) {
+    stellarSdkPromise = import("@stellar/stellar-sdk");
+  }
+
+  return stellarSdkPromise;
+}
+
 function normalizeDashboard(dashboard) {
   return {
     displayName: dashboard.display_name,
@@ -32,6 +41,15 @@ function normalizeDashboard(dashboard) {
     currentStreak: Number(dashboard.current_streak),
     createdAt: Number(dashboard.created_at),
     goalReachedThisWeek: Boolean(dashboard.goal_reached_this_week)
+  };
+}
+
+function normalizeGlobalStats(stats) {
+  return {
+    learnerCount: Number(stats.learner_count || 0),
+    totalSessions: Number(stats.total_sessions || 0),
+    totalMinutes: Number(stats.total_minutes || 0),
+    latestActivityAt: Number(stats.latest_activity_at || 0)
   };
 }
 
@@ -52,6 +70,8 @@ async function buildClient(account = "") {
     );
   }
 
+  const { contract: StellarContract } = await loadStellarSdk();
+
   return StellarContract.Client.from({
     contractId: configuredContractId,
     rpcUrl: configuredRpcUrl,
@@ -59,6 +79,73 @@ async function buildClient(account = "") {
     publicKey: account || undefined,
     signTransaction
   });
+}
+
+async function buildRpcServer() {
+  const { rpc } = await loadStellarSdk();
+  return new rpc.Server(configuredRpcUrl);
+}
+
+function serializeEventValue(value) {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(serializeEventValue);
+  }
+
+  if (typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, serializeEventValue(entry)])
+    );
+  }
+
+  return value;
+}
+
+async function scValToDisplay(value) {
+  const { scValToNative } = await loadStellarSdk();
+  return serializeEventValue(scValToNative(value));
+}
+
+function eventSummary(topics, payload) {
+  const headline = topics[0] || "Contract event";
+  if (!payload || typeof payload !== "object") {
+    return headline;
+  }
+
+  if (payload.display_name) {
+    return `${headline}: ${payload.display_name}`;
+  }
+
+  if (payload.topic) {
+    return `${headline}: ${payload.topic}`;
+  }
+
+  return headline;
+}
+
+async function normalizeEvent(event) {
+  const topics = await Promise.all((event.topic || []).map(async (entry) => {
+    const value = await scValToDisplay(entry);
+    return typeof value === "string" ? value : JSON.stringify(value);
+  }));
+  const payload = await scValToDisplay(event.value);
+
+  return {
+    id: event.id,
+    txHash: event.txHash,
+    ledger: Number(event.ledger),
+    closedAt: event.ledgerClosedAt,
+    topics,
+    summary: eventSummary(topics, payload),
+    payload
+  };
 }
 
 async function getWalletSnapshot() {
@@ -127,6 +214,26 @@ export function formatDate(unixSeconds) {
   }).format(new Date(Number(unixSeconds) * 1000));
 }
 
+export function formatDateTime(value) {
+  if (!value) {
+    return "No activity yet";
+  }
+
+  const source =
+    typeof value === "string" && value.includes("T")
+      ? new Date(value)
+      : new Date(Number(value) * 1000);
+
+  if (Number.isNaN(source.getTime())) {
+    return "No activity yet";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(source);
+}
+
 export function getExplorerLink(networkPassphrase, hash) {
   if (!hash) {
     return "";
@@ -138,6 +245,22 @@ export function getExplorerLink(networkPassphrase, hash) {
 
   if (networkPassphrase === "Public Global Stellar Network ; September 2015") {
     return `https://stellar.expert/explorer/public/tx/${hash}`;
+  }
+
+  return "";
+}
+
+export function getContractExplorerLink(networkPassphrase, contractId) {
+  if (!contractId) {
+    return "";
+  }
+
+  if (networkPassphrase === "Test SDF Network ; September 2015") {
+    return `https://lab.stellar.org/r/testnet/contract/${contractId}`;
+  }
+
+  if (networkPassphrase === "Public Global Stellar Network ; September 2015") {
+    return `https://lab.stellar.org/r/mainnet/contract/${contractId}`;
   }
 
   return "";
@@ -193,6 +316,12 @@ export async function readDashboard(account) {
   return normalizeDashboard(dashboardTx.result);
 }
 
+export async function readGlobalStats() {
+  const client = await buildClient();
+  const statsTx = await client.get_global_stats();
+  return normalizeGlobalStats(statsTx.result);
+}
+
 export async function readRecentSessions(account, limit = 5) {
   const client = await buildClient();
   const countTx = await client.get_session_count({ learner: account });
@@ -211,6 +340,30 @@ export async function readRecentSessions(account, limit = 5) {
   );
 
   return sessionResults;
+}
+
+export async function readContractEvents(limit = 6) {
+  if (!hasContractConfig()) {
+    return [];
+  }
+
+  const server = await buildRpcServer();
+  const latestLedger = await server.getLatestLedger();
+  const latestSequence = Number(latestLedger.sequence || 0);
+  const startLedger = Math.max(latestSequence - 5_000, 1);
+
+  const response = await server.getEvents({
+    startLedger,
+    filters: [
+      {
+        type: "contract",
+        contractIds: [configuredContractId]
+      }
+    ],
+    limit
+  });
+
+  return Promise.all(response.events.slice().reverse().map(normalizeEvent));
 }
 
 async function submitTransaction(assembledTx) {

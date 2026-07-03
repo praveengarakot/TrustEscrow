@@ -3,17 +3,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WatchWalletChanges } from "@stellar/freighter-api";
 import {
   configuredContractId,
+  configuredRpcUrl,
   configuredNetworkPassphrase,
   connectWallet,
   discoverWalletState,
   formatDate,
+  formatDateTime,
   formatMinutes,
+  getContractExplorerLink,
   getExplorerLink,
   getNetworkLabel,
   hasContractConfig,
   logSession,
   parseError,
+  readContractEvents,
   readDashboard,
+  readGlobalStats,
   readRecentSessions,
   saveProfile,
   shortAddress,
@@ -84,6 +89,15 @@ function ActivitySkeleton() {
   );
 }
 
+function ActivityTicker({ active = false }) {
+  return (
+    <span className={`ticker ${active ? "ticker-live" : ""}`}>
+      <span />
+      {active ? "Polling live" : "Idle"}
+    </span>
+  );
+}
+
 export default function App() {
   const queryClient = useQueryClient();
   const [wallet, setWallet] = useState(emptyWallet);
@@ -146,18 +160,39 @@ export default function App() {
 
   const wrongNetwork =
     Boolean(wallet.networkPassphrase) && wallet.networkPassphrase !== configuredNetworkPassphrase;
-  const readyForReads = Boolean(wallet.account) && hasContractConfig() && !wrongNetwork;
+  const contractReady = hasContractConfig();
+  const readyForReads = Boolean(wallet.account) && contractReady && !wrongNetwork;
+  const contractExplorerLink = getContractExplorerLink(
+    configuredNetworkPassphrase,
+    configuredContractId
+  );
+
+  const globalStatsQuery = useQuery({
+    queryKey: ["global-stats", configuredContractId],
+    queryFn: () => readGlobalStats(),
+    enabled: contractReady,
+    refetchInterval: 20_000
+  });
+
+  const contractEventsQuery = useQuery({
+    queryKey: ["contract-events", configuredContractId],
+    queryFn: () => readContractEvents(6),
+    enabled: contractReady,
+    refetchInterval: 15_000
+  });
 
   const dashboardQuery = useQuery({
     queryKey: ["dashboard", wallet.account, wallet.networkPassphrase],
     queryFn: () => readDashboard(wallet.account),
-    enabled: readyForReads
+    enabled: readyForReads,
+    refetchInterval: 20_000
   });
 
   const sessionsQuery = useQuery({
     queryKey: ["sessions", wallet.account, wallet.networkPassphrase, dashboardQuery.data?.sessionCount || 0],
     queryFn: () => readRecentSessions(wallet.account, 5),
-    enabled: readyForReads && Boolean(dashboardQuery.data)
+    enabled: readyForReads && Boolean(dashboardQuery.data),
+    refetchInterval: 20_000
   });
 
   useEffect(() => {
@@ -173,6 +208,7 @@ export default function App() {
   }, [dashboardQuery.data]);
 
   const dashboard = dashboardQuery.data;
+  const globalStats = globalStatsQuery.data;
   const weeklyProgress = useMemo(() => {
     if (!dashboard?.weeklyGoalMinutes) {
       return 0;
@@ -204,7 +240,9 @@ export default function App() {
 
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["dashboard", wallet.account] }),
-        queryClient.invalidateQueries({ queryKey: ["sessions", wallet.account] })
+        queryClient.invalidateQueries({ queryKey: ["sessions", wallet.account] }),
+        queryClient.invalidateQueries({ queryKey: ["global-stats", configuredContractId] }),
+        queryClient.invalidateQueries({ queryKey: ["contract-events", configuredContractId] })
       ]);
 
       setTxState({
@@ -352,6 +390,11 @@ export default function App() {
       topic,
       minutesSpent
     });
+
+    setSessionForm({
+      topic: "",
+      minutesSpent: sessionForm.minutesSpent
+    });
   }
 
   const txExplorerLink = getExplorerLink(wallet.networkPassphrase, txState.hash);
@@ -416,6 +459,16 @@ export default function App() {
           <div className="hero-side-stat">
             <span>Contract</span>
             <strong>{configuredContractId ? shortAddress(configuredContractId) : "Not deployed"}</strong>
+            <div className="hero-side-links">
+              {contractExplorerLink ? (
+                <a href={contractExplorerLink} target="_blank" rel="noreferrer">
+                  Open in Stellar Lab
+                </a>
+              ) : null}
+              <a href={configuredRpcUrl} target="_blank" rel="noreferrer">
+                View RPC
+              </a>
+            </div>
           </div>
 
           <div className="progress-shell">
@@ -429,8 +482,8 @@ export default function App() {
           </div>
 
           <p className="hero-note">
-            Built for focused operators with a crisp dashboard, wallet-based actions, and direct
-            Soroban writes on Stellar Testnet.
+            Built for focused operators with wallet-based actions, direct Soroban writes, and a
+            live contract activity pulse on Stellar Testnet.
           </p>
         </div>
       </header>
@@ -443,8 +496,8 @@ export default function App() {
               (wrongNetwork
                 ? `Connected to ${getNetworkLabel(wallet.networkPassphrase)}. Switch Freighter to ${getNetworkLabel(configuredNetworkPassphrase)}.`
                 : txState.message ||
-                  (hasContractConfig()
-                    ? "Ready to read and write focus sessions on Stellar."
+                  (contractReady
+                    ? "Ready to read and write focus sessions on Stellar. Contract stats and recent contract events refresh automatically."
                     : "Deploy the Soroban contract and export the frontend config before using the app."))}
           </p>
         </div>
@@ -494,9 +547,25 @@ export default function App() {
           note={wallet.account ? shortAddress(wallet.account) : "Connect to personalize"}
           loading={dashboardQuery.isLoading}
         />
+        <MetricCard
+          label="Network builders"
+          value={globalStats ? String(globalStats.learnerCount) : "0"}
+          note={contractReady ? "Profiles created on this contract" : "Deploy contract to activate"}
+          loading={globalStatsQuery.isLoading}
+        />
+        <MetricCard
+          label="Chain sessions"
+          value={globalStats ? String(globalStats.totalSessions) : "0"}
+          note={
+            globalStats
+              ? `${formatMinutes(globalStats.totalMinutes)} recorded across the contract`
+              : "Network-wide session total"
+          }
+          loading={globalStatsQuery.isLoading}
+        />
       </section>
 
-      {!hasContractConfig() ? (
+      {!contractReady ? (
         <Panel
           eyebrow="Deployment runway"
           title="Deploy the ledger and connect the app"
@@ -514,6 +583,37 @@ export default function App() {
 
       <section className="panel-grid">
         <Panel
+          eyebrow="Contract snapshot"
+          title="Live Soroban network overview"
+          body="These contract-wide stats are read without a wallet so anyone can inspect adoption and recent activity before connecting."
+          tone="mint"
+        >
+          <div className="detail-stack">
+            <div className="detail-row">
+              <span>Network</span>
+              <strong>{getNetworkLabel(configuredNetworkPassphrase)}</strong>
+            </div>
+            <div className="detail-row">
+              <span>Contract ID</span>
+              <strong>{configuredContractId || "Missing config"}</strong>
+            </div>
+            <div className="detail-row">
+              <span>Last contract activity</span>
+              <strong>{formatDateTime(globalStats?.latestActivityAt)}</strong>
+            </div>
+            <div className="detail-row">
+              <span>RPC endpoint</span>
+              <strong>{configuredRpcUrl}</strong>
+            </div>
+          </div>
+          {contractExplorerLink ? (
+            <a className="panel-link" href={contractExplorerLink} target="_blank" rel="noreferrer">
+              Inspect contract in Stellar Lab
+            </a>
+          ) : null}
+        </Panel>
+
+        <Panel
           eyebrow="Operator setup"
           title="Create or refresh your focus identity"
           body="Save a public display name and the number of deep-work minutes you want to land each week."
@@ -524,6 +624,8 @@ export default function App() {
               <span>Display name</span>
               <input
                 type="text"
+                maxLength="32"
+                required
                 placeholder="Signal Architect"
                 value={profileForm.displayName}
                 onChange={(event) =>
@@ -538,6 +640,7 @@ export default function App() {
                 min="30"
                 max="5000"
                 step="5"
+                required
                 value={profileForm.weeklyGoalMinutes}
                 onChange={(event) =>
                   setProfileForm((current) => ({
@@ -550,7 +653,7 @@ export default function App() {
             <button
               className="button button-primary"
               type="submit"
-              disabled={anyMutationPending || !wallet.account || !hasContractConfig()}
+              disabled={anyMutationPending || !wallet.account || !contractReady}
             >
               {saveProfileMutation.isPending ? "Saving..." : "Save profile"}
             </button>
@@ -571,6 +674,7 @@ export default function App() {
                 min="30"
                 max="5000"
                 step="5"
+                required
                 value={goalForm}
                 onChange={(event) => setGoalForm(event.target.value)}
               />
@@ -578,7 +682,7 @@ export default function App() {
             <button
               className="button button-secondary"
               type="submit"
-              disabled={anyMutationPending || !wallet.account || !dashboard || !hasContractConfig()}
+              disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}
             >
               {updateGoalMutation.isPending ? "Updating..." : "Update goal"}
             </button>
@@ -596,6 +700,8 @@ export default function App() {
               <span>Focus topic</span>
               <input
                 type="text"
+                maxLength="48"
+                required
                 placeholder="Systems design review"
                 value={sessionForm.topic}
                 onChange={(event) =>
@@ -610,6 +716,7 @@ export default function App() {
                 min="5"
                 max="480"
                 step="5"
+                required
                 value={sessionForm.minutesSpent}
                 onChange={(event) =>
                   setSessionForm((current) => ({
@@ -622,7 +729,7 @@ export default function App() {
             <button
               className="button button-primary"
               type="submit"
-              disabled={anyMutationPending || !wallet.account || !dashboard || !hasContractConfig()}
+              disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}
             >
               {logSessionMutation.isPending ? "Logging..." : "Log session"}
             </button>
@@ -664,16 +771,60 @@ export default function App() {
         </Panel>
 
         <Panel
+          eyebrow="Live event pulse"
+          title="Recent contract activity"
+          body="This feed polls Soroban RPC for the latest contract events, which makes the frontend feel more alive even when you are not the wallet currently writing."
+          tone="ember"
+        >
+          <div className="panel-toolbar">
+            <ActivityTicker active={contractEventsQuery.isFetching} />
+          </div>
+
+          {contractEventsQuery.isLoading ? (
+            <ActivitySkeleton />
+          ) : contractEventsQuery.data?.length ? (
+            <div className="event-stream">
+              {contractEventsQuery.data.map((event) => (
+                <article className="event-card" key={event.id}>
+                  <div>
+                    <p className="event-kicker">{event.summary}</p>
+                    <h3>{event.topics.join(" / ") || "Contract event"}</h3>
+                    <p>{formatDateTime(event.closedAt)}</p>
+                  </div>
+                  <div className="event-meta">
+                    <span>Ledger {event.ledger}</span>
+                    {event.txHash ? (
+                      <a
+                        href={getExplorerLink(configuredNetworkPassphrase, event.txHash)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View tx
+                      </a>
+                    ) : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-state">
+              No recent events were returned by the current RPC retention window yet. New on-chain
+              profile saves and session logs will appear here automatically.
+            </p>
+          )}
+        </Panel>
+
+        <Panel
           eyebrow="Platform overview"
           title="How FocusForge works"
-          body="FocusForge combines Freighter wallet access, Soroban contract writes, and a streamlined dashboard for tracking deep-work sessions on Stellar."
+          body="FocusForge combines Freighter wallet access, Soroban contract writes, live contract stats, and event-aware UX for tracking deep-work sessions on Stellar."
           tone="mint"
         >
           <ul className="check-list">
             <li>Connect a Freighter wallet on Stellar Testnet</li>
             <li>Create a profile and set a weekly focus target</li>
             <li>Log verified deep-work sessions on-chain</li>
-            <li>Track weekly progress, totals, and streak momentum</li>
+            <li>Track weekly progress, totals, streak momentum, and contract-wide activity</li>
           </ul>
         </Panel>
       </section>
