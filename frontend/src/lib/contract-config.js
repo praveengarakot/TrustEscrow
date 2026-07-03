@@ -1,8 +1,8 @@
 export const focusForgeConfig = {
   "contractName": "FocusForge",
-  "fallbackContractId": "CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U",
+  "fallbackContractId": "CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ",
   "fallbackNetwork": "testnet",
-  "generatedAt": "2026-04-21T14:48:36.239Z",
+  "generatedAt": "2026-04-22T18:16:35.978Z",
   "limits": {
     "minSessionMinutes": 5,
     "maxSessionMinutes": 480,
