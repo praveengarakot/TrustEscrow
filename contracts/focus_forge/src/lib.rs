@@ -46,6 +46,15 @@ pub struct Dashboard {
     pub goal_reached_this_week: bool,
 }
 
+#[derive(Clone)]
+#[contracttype]
+pub struct GlobalStats {
+    pub learner_count: u32,
+    pub total_sessions: u32,
+    pub total_minutes: u32,
+    pub latest_activity_at: u64,
+}
+
 #[contractevent]
 #[derive(Clone)]
 pub struct ProfileSaved {
@@ -79,6 +88,8 @@ pub struct StudySessionLogged {
 enum DataKey {
     Profile(Address),
     Session(Address, u32),
+    RegisteredLearner(Address),
+    GlobalStats,
 }
 
 #[contract]
@@ -86,13 +97,22 @@ pub struct FocusForge;
 
 #[contractimpl]
 impl FocusForge {
-    pub fn save_profile(env: Env, learner: Address, display_name: String, weekly_goal_minutes: u32) {
+    pub fn save_profile(
+        env: Env,
+        learner: Address,
+        display_name: String,
+        weekly_goal_minutes: u32,
+    ) {
         learner.require_auth();
         validate_display_name(&display_name);
         validate_weekly_goal(weekly_goal_minutes);
 
         let now = env.ledger().timestamp();
         let current_week = current_week(&env);
+        let is_new_profile = !env
+            .storage()
+            .persistent()
+            .has(&DataKey::RegisteredLearner(learner.clone()));
 
         let mut profile = read_profile_optional(&env, &learner).unwrap_or(LearnerProfile {
             display_name: display_name.clone(),
@@ -111,6 +131,9 @@ impl FocusForge {
         profile.weekly_goal_minutes = weekly_goal_minutes;
 
         write_profile(&env, &learner, &profile);
+        if is_new_profile {
+            register_learner(&env, &learner, now);
+        }
         ProfileSaved {
             learner,
             display_name,
@@ -167,6 +190,7 @@ impl FocusForge {
         write_session(&env, &learner, profile.session_count, &session);
         profile.session_count += 1;
         write_profile(&env, &learner, &profile);
+        record_session_totals(&env, minutes_spent, session.timestamp);
 
         StudySessionLogged {
             learner,
@@ -179,9 +203,7 @@ impl FocusForge {
     }
 
     pub fn has_profile(env: Env, learner: Address) -> bool {
-        env.storage()
-            .persistent()
-            .has(&DataKey::Profile(learner))
+        env.storage().persistent().has(&DataKey::Profile(learner))
     }
 
     pub fn get_dashboard(env: Env, learner: Address) -> Dashboard {
@@ -217,6 +239,10 @@ impl FocusForge {
             .get(&DataKey::Session(learner, index))
             .unwrap_or_else(|| panic!("Session not found"))
     }
+
+    pub fn get_global_stats(env: Env) -> GlobalStats {
+        read_global_stats(&env)
+    }
 }
 
 fn read_profile_optional(env: &Env, learner: &Address) -> Option<LearnerProfile> {
@@ -241,6 +267,47 @@ fn write_session(env: &Env, learner: &Address, index: u32, session: &StudySessio
         .set(&DataKey::Session(learner.clone(), index), session);
 }
 
+fn default_global_stats() -> GlobalStats {
+    GlobalStats {
+        learner_count: 0,
+        total_sessions: 0,
+        total_minutes: 0,
+        latest_activity_at: 0,
+    }
+}
+
+fn read_global_stats(env: &Env) -> GlobalStats {
+    env.storage()
+        .persistent()
+        .get(&DataKey::GlobalStats)
+        .unwrap_or_else(default_global_stats)
+}
+
+fn write_global_stats(env: &Env, stats: &GlobalStats) {
+    env.storage().persistent().set(&DataKey::GlobalStats, stats);
+}
+
+fn register_learner(env: &Env, learner: &Address, created_at: u64) {
+    env.storage()
+        .persistent()
+        .set(&DataKey::RegisteredLearner(learner.clone()), &true);
+
+    let mut stats = read_global_stats(env);
+    stats.learner_count += 1;
+    if stats.latest_activity_at < created_at {
+        stats.latest_activity_at = created_at;
+    }
+    write_global_stats(env, &stats);
+}
+
+fn record_session_totals(env: &Env, minutes_spent: u32, timestamp: u64) {
+    let mut stats = read_global_stats(env);
+    stats.total_sessions += 1;
+    stats.total_minutes += minutes_spent;
+    stats.latest_activity_at = timestamp;
+    write_global_stats(env, &stats);
+}
+
 fn sync_week(profile: &mut LearnerProfile, current_week: u64) {
     if current_week > profile.active_week {
         profile.active_week = current_week;
@@ -258,7 +325,10 @@ fn current_day(env: &Env) -> u64 {
 
 fn validate_display_name(display_name: &String) {
     let length = display_name.len();
-    assert!(length >= 3 && length <= 32, "Display name must be 3-32 chars");
+    assert!(
+        length >= 3 && length <= 32,
+        "Display name must be 3-32 chars"
+    );
 }
 
 fn validate_topic(topic: &String) {
@@ -344,6 +414,25 @@ mod test {
 
         assert_eq!(dashboard.minutes_this_week, 0);
         assert_eq!(dashboard.total_minutes, 120);
+    }
+
+    #[test]
+    fn tracks_global_stats_across_profiles_and_sessions() {
+        let (env, client, learner_one) = setup();
+        let learner_two = Address::generate(&env);
+        env.ledger().set_timestamp(1_000);
+
+        client.save_profile(&learner_one, &text(&env, "Session Crafter"), &240);
+        client.save_profile(&learner_two, &text(&env, "Ledger Watcher"), &360);
+        client.log_session(&learner_one, &text(&env, "Spec review"), &75);
+        client.log_session(&learner_one, &text(&env, "Frontend polish"), &45);
+
+        let stats = client.get_global_stats();
+
+        assert_eq!(stats.learner_count, 2);
+        assert_eq!(stats.total_sessions, 2);
+        assert_eq!(stats.total_minutes, 120);
+        assert!(stats.latest_activity_at > 0);
     }
 
     #[test]
