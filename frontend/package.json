@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "echo \"No dedicated lint task configured yet.\""
+    "lint": "eslint ."
   },
   "dependencies": {
     "@stellar/freighter-api": "^6.0.1",
@@ -17,7 +17,12 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.25.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "eslint": "^9.25.1",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
     "vite": "^5.4.10"
   }
 }
