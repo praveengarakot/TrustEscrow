@@ -242,3 +242,9 @@ Current local checks completed:
 - `npm run contract:deploy`
 - `npm run export:frontend`
 - `npm run build`
+
+### Test Output Screenshot
+
+Contract test run showing 3+ passing tests:
+
+![Contract test output](./test/test.png)
