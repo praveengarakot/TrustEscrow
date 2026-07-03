@@ -1,71 +1,50 @@
 # FocusForge
 
-FocusForge is a Stellar Soroban mini-dApp for tracking deep-work time on-chain. Operators connect a Freighter wallet, create a public profile, set a weekly focus target, and log individual work sessions that update weekly progress and streak data.
+[![CI](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml)
 
-## Submission Links
+FocusForge is a Stellar Soroban Level 4 submission for tracking deep-work sessions on-chain. Operators connect Freighter, create a public profile, set a weekly focus target, log verified sessions, and monitor both personal progress and contract-wide activity from a responsive production frontend.
 
-- Live deployed app: `https://focusforge-ledger-frontend.vercel.app/`
+## Live Submission Links
+
+- Public repository: `https://github.com/barish245/focusforge-ledger`
+- Live demo: `https://focusforge-ledger-ten.vercel.app`
+- Vercel production deployment: `https://focusforge-ledger-d00cbokkh-deep-sahas-projects-5b5ba27c.vercel.app`
 - MVP video: `https://drive.google.com/file/d/1GvgDGCJqStruF6dRhULNyLi7KjuHdDUx/view?usp=sharing`
-- Stellar Lab contract page: `https://lab.stellar.org/r/testnet/contract/CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U`
-- Testnet transaction 1: `https://stellar.expert/explorer/testnet/tx/94db57b61c4550ca5f7a214cbaa66715f60de87a3278a7d8179669c52011e5a5`
-- Testnet transaction 2: `https://stellar.expert/explorer/testnet/tx/a8102bb5301718e04ab29082ac40ea4b828259c22ab7a7ad5282d3f91050571a`
 
-## UI Preview
+## Screenshots
 
-![FocusForge UI](./UI.png)
+### Desktop UI
 
-## Demo Recording
+![FocusForge desktop UI](./UI.png)
 
-[Watch the MVP video on Google Drive](https://drive.google.com/file/d/1GvgDGCJqStruF6dRhULNyLi7KjuHdDUx/view?usp=sharing)
+### Mobile responsive view
 
-## Deployment Details
+![FocusForge mobile responsive view](./assets/mobile-responsive.png)
 
-- Network: `Stellar Testnet`
-- Contract alias: `focus_forge`
-- Contract ID: `CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U`
-- Contract explorer: `https://lab.stellar.org/r/testnet/contract/CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U`
-- Testnet transaction 1: `https://stellar.expert/explorer/testnet/tx/94db57b61c4550ca5f7a214cbaa66715f60de87a3278a7d8179669c52011e5a5`
-- Testnet transaction 2: `https://stellar.expert/explorer/testnet/tx/a8102bb5301718e04ab29082ac40ea4b828259c22ab7a7ad5282d3f91050571a`
+## Level 4 Highlights
 
-## What The App Does
+- Soroban smart contract with profile storage, weekly goal management, session logging, streak tracking, and global contract stats
+- Frontend upgraded with live contract overview, recent contract event polling, clearer production links, and stronger mobile responsiveness
+- Production deployment on Vercel
+- CI workflow covering Rust formatting, contract tests, wasm build, frontend lint, and frontend build
+- 8+ meaningful git commits in the repository history
 
-Users can:
+## Project Overview
 
-- Connect a Freighter wallet on Stellar Testnet
-- Create or update a public operator profile
-- Set a weekly focus target
-- Log deep-work sessions on-chain
-- Track total minutes, weekly progress, and streaks
-- Review recent sessions pulled from the deployed contract
+FocusForge helps a learner or builder prove focused work on-chain. Each wallet can:
 
-## Stack
+- Create or update a profile with a public display name
+- Set a weekly goal in minutes
+- Log deep-work sessions on Soroban
+- Track total minutes, minutes this week, session count, and streak momentum
+- Inspect network-wide stats for the whole contract
+- Watch recent contract activity pulled from Soroban RPC
 
-- Smart contract: Rust + Soroban SDK
-- Contract tooling: Stellar CLI
-- Frontend: React + Vite
-- Wallet: Freighter
-- Network access: Soroban RPC via `@stellar/stellar-sdk`
-- Data fetching: TanStack Query
+## Architecture
 
-## Project Structure
+### Smart contract
 
-```text
-contracts/focus_forge/
-frontend/
-scripts/
-Cargo.toml
-package.json
-README.md
-```
-
-## Contract Features
-
-The Soroban contract stores:
-
-- An operator profile per Stellar address
-- Individual focus sessions by index
-- Weekly progress totals
-- Consecutive-day streaks
+Location: [`contracts/focus_forge/src/lib.rs`](./contracts/focus_forge/src/lib.rs)
 
 Contract methods:
 
@@ -73,16 +52,80 @@ Contract methods:
 - `update_weekly_goal(learner, new_goal_minutes)`
 - `log_session(learner, topic, minutes_spent)`
 - `get_dashboard(learner)`
+- `get_global_stats()`
 - `get_session_count(learner)`
 - `get_session(learner, index)`
 - `has_profile(learner)`
 
+Stored contract data:
+
+- Per-wallet learner profile
+- Per-wallet session history
+- Weekly progress counters
+- Consecutive-day streak data
+- Global contract stats across all learners and sessions
+
 Validation rules:
 
-- Display name: 3 to 32 chars
-- Topic: 3 to 48 chars
-- Session length: 5 to 480 minutes
-- Weekly goal: 30 to 5000 minutes
+- Display name: `3-32` characters
+- Topic: `3-48` characters
+- Session length: `5-480` minutes
+- Weekly goal: `30-5000` minutes
+
+### Frontend
+
+Location: [`frontend/src`](./frontend/src)
+
+Frontend stack:
+
+- React + Vite
+- TanStack Query
+- Freighter wallet integration
+- Soroban RPC reads and writes through `@stellar/stellar-sdk`
+
+Frontend production upgrades in this Level 4 pass:
+
+- live contract-wide stats panel
+- recent contract event polling from Soroban RPC
+- deterministic contract config export for cleaner builds
+- real ESLint setup
+- better mobile layout handling
+- clearer contract and RPC visibility for operators
+
+## Contract Deployment
+
+- Network: `Stellar Testnet`
+- Contract alias: `focus_forge`
+- Current contract ID: `CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ`
+- Contract explorer: `https://lab.stellar.org/r/testnet/contract/CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ`
+- Deployment record: [`deployments/testnet.json`](./deployments/testnet.json)
+
+Deployment transactions:
+
+- WASM upload tx: `https://stellar.expert/explorer/testnet/tx/39ba11fc489089fd0f43d74db529efbf8e4bacf53034c56fa5ccb534098f55b4`
+- Contract deploy tx: `https://stellar.expert/explorer/testnet/tx/eda5b248a64b66fe1a362742d5198e297f4d2ba5d18c1981f4850a44b4d24135`
+
+Verification transactions used after deployment:
+
+- Profile save tx: `https://stellar.expert/explorer/testnet/tx/cd11d3aa09d01c5439c6b86311a3c8ffca4109b2a1a7793f88d3edba59c59e43`
+- Session log tx: `https://stellar.expert/explorer/testnet/tx/abe136b79a8c7c652633a430cd6a593cbbf8f87aab4ce0ad9f07e9b01e3e87d2`
+
+## CI/CD
+
+GitHub Actions workflow: [`ci.yml`](./.github/workflows/ci.yml)
+
+The pipeline runs:
+
+- `npm ci`
+- `cargo fmt --all --check`
+- `cargo test`
+- `cargo build --target wasm32v1-none --release -p focus_forge`
+- `npm run lint`
+- `npm run build:frontend`
+
+CI badge:
+
+[![CI](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml)
 
 ## Local Setup
 
@@ -92,27 +135,27 @@ Validation rules:
 npm install
 ```
 
-### 2. Run contract tests
+### 2. Run contract validation
 
 ```powershell
-npm run contract:test
+npm run contract:check
 ```
 
-### 3. Build the Soroban contract
+### 3. Build the frontend bundle
 
 ```powershell
-npm run contract:build
+npm run build:frontend
 ```
 
-This uses `stellar contract build` and outputs:
+### 4. Start the app locally
 
-```text
-target/wasm32v1-none/release/focus_forge.wasm
+```powershell
+npm run dev
 ```
 
-### 4. Configure environment
+### 5. Optional environment file
 
-Copy `.env.example` to `.env` and set a Stellar CLI identity:
+Copy `.env.example` to `.env` if you want to override defaults:
 
 ```env
 STELLAR_ACCOUNT=alice
@@ -120,133 +163,82 @@ STELLAR_NETWORK=testnet
 STELLAR_CONTRACT_ALIAS=focus_forge
 VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
 VITE_STELLAR_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
-VITE_CONTRACT_ID=
+VITE_CONTRACT_ID=CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ
 ```
 
-For this deployed testnet instance, you can set:
+## Build, Test, and Deploy Commands
 
-```env
-VITE_CONTRACT_ID=CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U
-```
-
-## Deploy To Stellar Testnet
-
-### 1. Create and fund a testnet identity
-
-Using Stellar CLI:
-
-```powershell
-stellar keys generate alice --network testnet --fund
-```
-
-This follows the current Stellar docs flow for testnet deployment with `stellar` CLI.
-
-### 2. Build the contract
+### Contract build
 
 ```powershell
 npm run contract:build
 ```
 
-### 3. Deploy the contract
+### Contract deploy
 
 ```powershell
+$env:STELLAR_ACCOUNT='alice'
+$env:STELLAR_NETWORK='testnet'
+$env:STELLAR_CONTRACT_ALIAS='focus_forge'
 npm run contract:deploy
 ```
 
-The deploy script wraps:
-
-```powershell
-stellar contract deploy `
-  --wasm target/wasm32v1-none/release/focus_forge.wasm `
-  --source-account alice `
-  --network testnet `
-  --alias focus_forge
-```
-
-After deployment it writes:
-
-```text
-deployments/testnet.json
-```
-
-Current deployed record:
-
-- Source account alias: `alice`
-- Contract ID: `CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U`
-- Deployment timestamp: `2026-04-21T14:48:17.511Z`
-
-### 4. Export frontend config
+### Export frontend config from the deployment record
 
 ```powershell
 npm run export:frontend
 ```
 
-That updates:
-
-```text
-frontend/src/lib/contract-config.js
-```
-
-### 5. Start the frontend
+### Frontend production build
 
 ```powershell
-npm run dev
+npm run build:frontend
 ```
 
-Then open the Vite URL and connect Freighter on `Stellar Testnet`.
-
-## Production Build
+### Vercel production deploy
 
 ```powershell
-npm run build
+npx --yes --package vercel vercel deploy --prod --yes --logs
 ```
 
-This will:
+## Verification Steps
 
-1. Build the Soroban contract
-2. Export the frontend config
-3. Build the React app into `frontend/dist`
+### Contract verification
 
-## Vercel Deployment
-
-The repo is still Vercel-ready for the frontend.
-
-- Live frontend: `https://focusforge-ledger-frontend.vercel.app/`
-- Install command: `npm install`
-- Build command: `npm run build`
-- Output directory: `frontend/dist`
-
-Set these Vercel environment variables:
-
-- `VITE_STELLAR_RPC_URL`
-- `VITE_STELLAR_NETWORK_PASSPHRASE`
-- `VITE_CONTRACT_ID`
-
-Recommended testnet values:
-
-```env
-VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
-VITE_STELLAR_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
-VITE_CONTRACT_ID=CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U
+```powershell
+stellar contract invoke --id CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ --source-account alice --network testnet -- get_global_stats
+stellar contract invoke --id CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ --source-account alice --network testnet -- get_dashboard --learner GAOIB7NPO2XP5AM3OXTQL3FR5WA444UPISMYZ2VZGOSGNGICSBWWO3MM
 ```
 
-## Notes
+### Frontend verification
 
-- Freighter must be installed in the browser to submit transactions from the frontend.
-- If Brave blocks Freighter injection on localhost, Chrome or Edge may be more reliable for the demo flow.
+1. Open the live demo.
+2. Confirm the contract snapshot shows the current testnet contract ID.
+3. Connect Freighter on Stellar Testnet.
+4. Save a profile or log a session.
+5. Confirm the transaction link opens in Stellar Expert.
+6. Confirm the recent contract activity panel refreshes with new events.
 
-## Verification
+## Inter-contract Calls and Token/Pool Notes
 
-Current local checks completed:
+- Inter-contract calls: `Not used in this project`
+- Transaction hashes for inter-contract calls: `Not applicable`
+- Custom token deployed: `No`
+- Liquidity pool deployed: `No`
+- Token or pool address: `Not applicable`
 
-- `npm run contract:test`
-- `npm run contract:build`
-- `npm run contract:deploy`
-- `npm run export:frontend`
-- `npm run build`
+This submission was strengthened with richer on-chain UX and live contract activity instead of adding a token or pool that the product does not need.
 
-### Test Output Screenshot
+## Submission Checklist
 
-Contract test run showing 3+ passing tests:
+- Public GitHub repository: `Yes`
+- Complete README: `Yes`
+- Live demo link included: `Yes`
+- Mobile responsive screenshot included: `Yes`
+- CI badge included: `Yes`
+- Contract address documented: `Yes`
+- Deployment transaction hashes documented: `Yes`
+- Inter-contract call note included: `Yes`
+- Token/pool note included: `Yes`
+- Live frontend deployed: `Yes`
 
-![Contract test output](./test/test.png)
