@@ -4,6 +4,7 @@ FocusForge is a Stellar Soroban mini-dApp for tracking deep-work time on-chain. 
 
 ## Submission Links
 
+- Live deployed app: `https://focusforge-ledger-frontend.vercel.app/`
 - Demo recording: [screenrecord.mp4](./screenrecord.mp4)
 - Stellar Lab contract page: `https://lab.stellar.org/r/testnet/contract/CDZK3VVCOAHLHSVLOGI3IC3SKGTOL5SGNY2I42LN26EUHJUKLFZB7L7U`
 - Testnet transaction 1: `https://stellar.expert/explorer/testnet/tx/94db57b61c4550ca5f7a214cbaa66715f60de87a3278a7d8179669c52011e5a5`
@@ -210,6 +211,7 @@ This will:
 
 The repo is still Vercel-ready for the frontend.
 
+- Live frontend: `https://focusforge-ledger-frontend.vercel.app/`
 - Install command: `npm install`
 - Build command: `npm run build`
 - Output directory: `frontend/dist`
