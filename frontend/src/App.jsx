@@ -3,15 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WatchWalletChanges } from "@stellar/freighter-api";
 import {
   configuredContractId,
-  configuredRewardsContractId,
-  configuredRpcUrl,
   configuredNetworkPassphrase,
   connectWallet,
   discoverWalletState,
   formatDate,
   formatDateTime,
   formatMinutes,
-  getContractExplorerLink,
   getExplorerLink,
   getNetworkLabel,
   hasContractConfig,
@@ -171,10 +168,7 @@ export default function App() {
     Boolean(wallet.networkPassphrase) && wallet.networkPassphrase !== configuredNetworkPassphrase;
   const contractReady = hasContractConfig();
   const readyForReads = Boolean(wallet.account) && contractReady && !wrongNetwork;
-  const contractExplorerLink = getContractExplorerLink(
-    configuredNetworkPassphrase,
-    configuredContractId
-  );
+
 
   const globalStatsQuery = useQuery({
     queryKey: ["global-stats", configuredContractId],

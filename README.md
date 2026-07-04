@@ -9,17 +9,17 @@ ForgeMind is a Stellar Soroban Level 4 submission for tracking deep-work session
 - Public repository: [GitHub Repository](https://github.com/barish245/focusforge-ledger)
 - Live demo: [focusforge-ledger-ten.vercel.app](https://focusforge-ledger-ten.vercel.app)
 - Vercel production deployment: [Vercel Deployment](https://focusforge-ledger-ten.vercel.app)
-- MVP video: [Google Drive Link](https://drive.google.com/file/d/1GvgDGCJqStruF6dRhULNyLi7KjuHdDUx/view?usp=sharing)
+- MVP video: [Google Drive Link](https://drive.google.com/file/d/1xyK2LiGWx28mTAtYsqhwQx4VmmjJMb_0/view?usp=sharing)
 
 ## Screenshots
 
 ### Desktop UI
 
-![ForgeMind desktop UI](./UI.png)
+![ForgeMind desktop UI](./SUBMISSION%20ASSETS/UI.png)
 
 ### Mobile UI
 
-![ForgeMind mobile UI](./mobile.png)
+![ForgeMind mobile UI](./SUBMISSION%20ASSETS/mobui.png)
 
 ### CI/CD
 
