@@ -23,7 +23,7 @@ ForgeMind is a Stellar Soroban Level 4 submission for tracking deep-work session
 
 ### CI/CD
 
-![ForgeMind CI/CD](./cicd.png)
+![ForgeMind CI/CD](./SUBMISSION%20ASSETS/cicd.png)
 
 ## Project Overview
 
