@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, String};
+use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, String, IntoVal};
 
 const DAY_IN_SECONDS: u64 = 86_400;
 const WEEK_IN_SECONDS: u64 = 604_800;
@@ -90,6 +90,8 @@ enum DataKey {
     Session(Address, u32),
     RegisteredLearner(Address),
     GlobalStats,
+    Admin,
+    RewardsContract,
 }
 
 #[contract]
@@ -97,6 +99,20 @@ pub struct FocusForge;
 
 #[contractimpl]
 impl FocusForge {
+    pub fn initialize(env: Env, admin: Address, rewards_contract: Address) {
+        if env.storage().instance().has(&DataKey::Admin) {
+            panic!("Already initialized");
+        }
+        env.storage().instance().set(&DataKey::Admin, &admin);
+        env.storage().instance().set(&DataKey::RewardsContract, &rewards_contract);
+    }
+
+    pub fn get_rewards_contract(env: Env) -> Address {
+        env.storage()
+            .instance()
+            .get(&DataKey::RewardsContract)
+            .unwrap_or_else(|| panic!("Rewards contract not configured"))
+    }
     pub fn save_profile(
         env: Env,
         learner: Address,
@@ -193,13 +209,33 @@ impl FocusForge {
         record_session_totals(&env, minutes_spent, session.timestamp);
 
         StudySessionLogged {
-            learner,
+            learner: learner.clone(),
             topic,
             minutes_spent,
             minutes_this_week: profile.minutes_this_week,
             current_streak: profile.current_streak,
         }
         .publish(&env);
+
+        if let Some(rewards_contract) = env.storage().instance().get::<_, Address>(&DataKey::RewardsContract) {
+            let total_min = profile.total_minutes;
+            let mut badge_type: u32 = 0;
+            if total_min >= 1000 {
+                badge_type = 3; // Gold
+            } else if total_min >= 300 {
+                badge_type = 2; // Silver
+            } else if total_min >= 60 {
+                badge_type = 1; // Bronze
+            }
+
+            if badge_type > 0 {
+                env.invoke_contract::<()>(
+                    &rewards_contract,
+                    &soroban_sdk::Symbol::new(&env, "award_badge"),
+                    soroban_sdk::vec![&env, learner.into_val(&env), badge_type.into_val(&env)],
+                );
+            }
+        }
     }
 
     pub fn has_profile(env: Env, learner: Address) -> bool {
@@ -355,13 +391,27 @@ mod test {
     use super::*;
     use soroban_sdk::testutils::{Address as _, Ledger};
 
-    fn setup() -> (Env, FocusForgeClient<'static>, Address) {
+    #[contract]
+    pub struct MockRewardsContract;
+
+    #[contractimpl]
+    impl MockRewardsContract {
+        pub fn initialize(env: Env, admin: Address) {}
+        pub fn award_badge(env: Env, learner: Address, badge_type: u32) {}
+    }
+
+    fn setup() -> (Env, FocusForgeClient<'static>, Address, Address) {
         let env = Env::default();
         let contract_id = env.register(FocusForge, ());
         let client = FocusForgeClient::new(&env, &contract_id);
-        let learner = Address::generate(&env);
+        
+        let rewards_id = env.register(MockRewardsContract, ());
+        let admin = Address::generate(&env);
+        
+        client.initialize(&admin, &rewards_id);
+        
         env.mock_all_auths();
-        (env, client, learner)
+        (env, client, admin, rewards_id)
     }
 
     fn text(env: &Env, value: &str) -> String {
@@ -370,7 +420,7 @@ mod test {
 
     #[test]
     fn creates_profile_and_reads_dashboard() {
-        let (env, client, learner) = setup();
+        let (env, client, learner, _) = setup();
 
         client.save_profile(&learner, &text(&env, "Deep Builder"), &360);
         let dashboard = client.get_dashboard(&learner);
@@ -383,7 +433,7 @@ mod test {
 
     #[test]
     fn logs_sessions_and_grows_streak_across_days() {
-        let (env, client, learner) = setup();
+        let (env, client, learner, _) = setup();
 
         client.save_profile(&learner, &text(&env, "Protocol Pilot"), &300);
         client.log_session(&learner, &text(&env, "Rust basics"), &90);
@@ -404,7 +454,7 @@ mod test {
 
     #[test]
     fn resets_weekly_progress_after_boundary() {
-        let (env, client, learner) = setup();
+        let (env, client, learner, _) = setup();
 
         client.save_profile(&learner, &text(&env, "Weekly Runner"), &240);
         client.log_session(&learner, &text(&env, "Storage design"), &120);
@@ -418,7 +468,7 @@ mod test {
 
     #[test]
     fn tracks_global_stats_across_profiles_and_sessions() {
-        let (env, client, learner_one) = setup();
+        let (env, client, learner_one, _) = setup();
         let learner_two = Address::generate(&env);
         env.ledger().set_timestamp(1_000);
 
@@ -438,21 +488,21 @@ mod test {
     #[test]
     #[should_panic(expected = "Profile not found")]
     fn rejects_missing_profile_session_logs() {
-        let (env, client, learner) = setup();
+        let (env, client, learner, _) = setup();
         client.log_session(&learner, &text(&env, "No profile yet"), &60);
     }
 
     #[test]
     #[should_panic(expected = "Display name must be 3-32 chars")]
     fn rejects_short_display_names() {
-        let (env, client, learner) = setup();
+        let (env, client, learner, _) = setup();
         client.save_profile(&learner, &text(&env, "AB"), &200);
     }
 
     #[test]
     #[should_panic(expected = "Session minutes out of range")]
     fn rejects_short_sessions() {
-        let (env, client, learner) = setup();
+        let (env, client, learner, _) = setup();
         client.save_profile(&learner, &text(&env, "Focus Friend"), &200);
         client.log_session(&learner, &text(&env, "Edge case"), &4);
     }
@@ -460,7 +510,7 @@ mod test {
     #[test]
     #[should_panic(expected = "Weekly goal out of range")]
     fn rejects_bad_goal_updates() {
-        let (env, client, learner) = setup();
+        let (env, client, learner, _) = setup();
         client.save_profile(&learner, &text(&env, "Goal Guard"), &200);
         client.update_weekly_goal(&learner, &20);
     }

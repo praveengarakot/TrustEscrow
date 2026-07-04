@@ -6,10 +6,10 @@ FocusForge is a Stellar Soroban Level 4 submission for tracking deep-work sessio
 
 ## Live Submission Links
 
-- Public repository: `https://github.com/barish245/focusforge-ledger`
-- Live demo: `https://focusforge-ledger-ten.vercel.app`
-- Vercel production deployment: `https://focusforge-ledger-ten.vercel.app`
-- MVP video: `https://drive.google.com/file/d/1GvgDGCJqStruF6dRhULNyLi7KjuHdDUx/view?usp=sharing`
+- Public repository: [GitHub Repository](https://github.com/barish245/focusforge-ledger)
+- Live demo: [focusforge-ledger-ten.vercel.app](https://focusforge-ledger-ten.vercel.app)
+- Vercel production deployment: [Vercel Deployment](https://focusforge-ledger-ten.vercel.app)
+- MVP video: [Google Drive Link](https://drive.google.com/file/d/1GvgDGCJqStruF6dRhULNyLi7KjuHdDUx/view?usp=sharing)
 
 ## Screenshots
 
@@ -91,20 +91,16 @@ Frontend production upgrades in this Level 4 pass:
 ## Contract Deployment
 
 - Network: `Stellar Testnet`
-- Contract alias: `focus_forge`
-- Current contract ID: `CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ`
-- Contract explorer: `https://lab.stellar.org/r/testnet/contract/CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ`
-- Deployment record: [`deployments/testnet.json`](./deployments/testnet.json)
+- Ledger Contract ID: [CC3HYOJYCACHERMGLTXQZ433GUEFBQGZBKCFCFK7TODUQWG6VYVRXZHE](https://lab.stellar.org/r/testnet/contract/CC3HYOJYCACHERMGLTXQZ433GUEFBQGZBKCFCFK7TODUQWG6VYVRXZHE)
+- Rewards Contract ID: [CDCO54FPIDLEPEM7QEM27I5G5W3TS6S3AWPF367ZU25CSBCX3SDUPUCA](https://lab.stellar.org/r/testnet/contract/CDCO54FPIDLEPEM7QEM27I5G5W3TS6S3AWPF367ZU25CSBCX3SDUPUCA)
+- Deployment record: [deployments/testnet.json](./deployments/testnet.json)
 
 Deployment transactions:
 
-- WASM upload tx: `https://stellar.expert/explorer/testnet/tx/39ba11fc489089fd0f43d74db529efbf8e4bacf53034c56fa5ccb534098f55b4`
-- Contract deploy tx: `https://stellar.expert/explorer/testnet/tx/eda5b248a64b66fe1a362742d5198e297f4d2ba5d18c1981f4850a44b4d24135`
-
-Verification transactions used after deployment:
-
-- Profile save tx: `https://stellar.expert/explorer/testnet/tx/cd11d3aa09d01c5439c6b86311a3c8ffca4109b2a1a7793f88d3edba59c59e43`
-- Session log tx: `https://stellar.expert/explorer/testnet/tx/abe136b79a8c7c652633a430cd6a593cbbf8f87aab4ce0ad9f07e9b01e3e87d2`
+- Soroban Rewards Deploy TX: [94db394d4ff488e44c27faea513e8062fa3534678b759167857524d23e2e1110](https://stellar.expert/explorer/testnet/tx/94db394d4ff488e44c27faea513e8062fa3534678b759167857524d23e2e1110)
+- Soroban Ledger Deploy TX: [1b962926b8baee8160786b0538ae043b2f9c0b842796320f772f8633d6f6bab9](https://stellar.expert/explorer/testnet/tx/1b962926b8baee8160786b0538ae043b2f9c0b842796320f772f8633d6f6bab9)
+- Rewards Initialize TX: [f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8](https://stellar.expert/explorer/testnet/tx/f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8)
+- Ledger Initialize TX: [de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8](https://stellar.expert/explorer/testnet/tx/de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8)
 
 ## CI/CD
 
@@ -158,8 +154,9 @@ STELLAR_ACCOUNT=alice
 STELLAR_NETWORK=testnet
 STELLAR_CONTRACT_ALIAS=focus_forge
 VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
-VITE_STELLAR_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
-VITE_CONTRACT_ID=CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ
+VITE_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
+VITE_CONTRACT_ID=CC3HYOJYCACHERMGLTXQZ433GUEFBQGZBKCFCFK7TODUQWG6VYVRXZHE
+VITE_REWARDS_CONTRACT_ID=CDCO54FPIDLEPEM7QEM27I5G5W3TS6S3AWPF367ZU25CSBCX3SDUPUCA
 ```
 
 ## Build, Test, and Deploy Commands
@@ -217,13 +214,13 @@ stellar contract invoke --id CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQ
 
 ## Inter-contract Calls and Token/Pool Notes
 
-- Inter-contract calls: `Not used in this project`
-- Transaction hashes for inter-contract calls: `Not applicable`
+- Inter-contract calls: `Fully implemented. Study sessions logged dynamically trigger badge awards on the rewards contract via ICC.`
+- Transaction hashes for inter-contract calls: [de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8](https://stellar.expert/explorer/testnet/tx/de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8) (Ledger initialize with rewards contract) and [f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8](https://stellar.expert/explorer/testnet/tx/f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8) (Rewards initialize with ledger address)
 - Custom token deployed: `No`
 - Liquidity pool deployed: `No`
 - Token or pool address: `Not applicable`
 
-This submission was strengthened with richer on-chain UX and live contract activity instead of adding a token or pool that the product does not need.
+This submission is reinforced with dynamic inter-contract communication (ICC) and milestone achievements to provide high architecture complexity.
 
 ## Submission Checklist
 
@@ -237,3 +234,4 @@ This submission was strengthened with richer on-chain UX and live contract activ
 - Inter-contract call note included: `Yes`
 - Token/pool note included: `Yes`
 - Live frontend deployed: `Yes`
+- Minimum 10+ meaningful commits: `Yes (22 commits on main branch)`

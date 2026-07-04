@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { WatchWalletChanges } from "@stellar/freighter-api";
 import {
   configuredContractId,
+  configuredRewardsContractId,
   configuredRpcUrl,
   configuredNetworkPassphrase,
   connectWallet,
@@ -20,6 +21,7 @@ import {
   readDashboard,
   readGlobalStats,
   readRecentSessions,
+  readBadges,
   saveProfile,
   shortAddress,
   updateWeeklyGoal
@@ -38,6 +40,12 @@ const emptyTx = {
   status: "idle",
   message: "",
   hash: ""
+};
+
+const badgeDefinitions = {
+  1: { name: "Bronze Operator", desc: "Forged 60+ minutes of total focus time", color: "#8a5a36", icon: "🥉" },
+  2: { name: "Silver Operator", desc: "Forged 300+ minutes of total focus time", color: "#71717a", icon: "🥈" },
+  3: { name: "Gold Operator", desc: "Forged 1000+ minutes of total focus time", color: "#b45309", icon: "🥇" }
 };
 
 function BrandMark() {
@@ -195,6 +203,13 @@ export default function App() {
     refetchInterval: 20_000
   });
 
+  const badgesQuery = useQuery({
+    queryKey: ["badges", wallet.account, wallet.networkPassphrase, dashboardQuery.data?.totalMinutes || 0],
+    queryFn: () => readBadges(wallet.account),
+    enabled: readyForReads && Boolean(dashboardQuery.data),
+    refetchInterval: 20_000
+  });
+
   useEffect(() => {
     if (!dashboardQuery.data) {
       return;
@@ -241,6 +256,7 @@ export default function App() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["dashboard", wallet.account] }),
         queryClient.invalidateQueries({ queryKey: ["sessions", wallet.account] }),
+        queryClient.invalidateQueries({ queryKey: ["badges", wallet.account] }),
         queryClient.invalidateQueries({ queryKey: ["global-stats", configuredContractId] }),
         queryClient.invalidateQueries({ queryKey: ["contract-events", configuredContractId] })
       ]);
@@ -734,6 +750,36 @@ export default function App() {
               {logSessionMutation.isPending ? "Logging..." : "Log session"}
             </button>
           </form>
+        </Panel>
+      </section>
+
+      <section className="panel-grid panel-grid-single">
+        <Panel
+          eyebrow="Achievements"
+          title="On-Chain Badges"
+          body="Milestone rewards earned through focus achievements on the rewards contract via inter-contract communication (ICC)."
+          tone="mint"
+        >
+          {badgesQuery.isLoading ? (
+            <ActivitySkeleton />
+          ) : badgesQuery.data?.length ? (
+            <div className="badge-grid">
+              {badgesQuery.data.map((badgeId) => {
+                const def = badgeDefinitions[badgeId] || { name: `Badge #${badgeId}`, desc: "Milestone unlocked", color: "#71717a", icon: "🏆" };
+                return (
+                  <article className="badge-card" key={badgeId}>
+                    <span className="badge-icon-wrapper">{def.icon}</span>
+                    <h3>{def.name}</h3>
+                    <p>{def.desc}</p>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="empty-state">
+              No on-chain badges earned yet. Reach milestones of 60m, 300m, or 1000m total focus time to be awarded milestone badges.
+            </p>
+          )}
         </Panel>
       </section>
 

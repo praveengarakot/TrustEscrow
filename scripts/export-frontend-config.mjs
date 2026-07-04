@@ -23,6 +23,7 @@ const fileContents = `export const focusForgeConfig = ${JSON.stringify(
   {
     contractName: "FocusForge",
     fallbackContractId: deployment?.contractId || "",
+    fallbackRewardsContractId: deployment?.rewardsContractId || "",
     fallbackNetwork: deployment?.network || "testnet",
     generatedAt: deployment?.deployedAt || "",
     limits: {
