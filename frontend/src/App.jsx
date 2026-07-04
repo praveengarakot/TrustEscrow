@@ -110,6 +110,7 @@ export default function App() {
   const queryClient = useQueryClient();
   const [wallet, setWallet] = useState(emptyWallet);
   const [txState, setTxState] = useState(emptyTx);
+  const [page, setPage] = useState("dashboard"); // "dashboard", "log", "profile", "badges", "history"
   const [profileForm, setProfileForm] = useState({
     displayName: "",
     weeklyGoalMinutes: "240"
@@ -415,465 +416,250 @@ export default function App() {
 
   const txExplorerLink = getExplorerLink(wallet.networkPassphrase, txState.hash);
 
+  const statusMessage =
+    wallet.error ||
+    (wrongNetwork
+      ? `Connected to ${getNetworkLabel(wallet.networkPassphrase)}. Switch Freighter to ${getNetworkLabel(configuredNetworkPassphrase)}.`
+      : txState.message ||
+        (contractReady
+          ? "ForgeMind is ready to log study blocks."
+          : "Deploy the Soroban contract and export config before using the app."));
+
   return (
-    <div className="app-shell">
-      <div className="glow glow-one" />
-      <div className="glow glow-two" />
-      <div className="glow glow-three" />
-
-      <header className="hero">
-        <div className="hero-main">
-          <div className="brand-row">
-            <BrandMark />
-            <div>
-              <p className="kicker">On-chain focus operating system</p>
-              <h1>FocusForge</h1>
-            </div>
-          </div>
-
-          <p className="lead">
-            A focused on-chain workspace for makers, builders, and research teams who want deep
-            work logged on Stellar with clean weekly targets and visible streak momentum.
-          </p>
-
-          <div className="hero-actions">
-            <button
-              className="button button-primary"
-              onClick={handleConnectWallet}
-              disabled={wallet.isConnecting}
-            >
-              {wallet.isConnecting
-                ? "Connecting..."
-                : wallet.account
-                  ? "Wallet Connected"
-                  : "Connect Freighter"}
-            </button>
-            <div className="hero-badges">
-              <span className="pill">Soroban powered</span>
-              <span className="pill">Freighter ready</span>
-              <span className="pill">Weekly streaks</span>
-            </div>
-          </div>
+    <div className="app-container">
+      <aside className="sidebar">
+        <div className="brand">
+          <BrandMark />
+          <h2>ForgeMind</h2>
         </div>
-
-        <div className="hero-side">
-          <div className="hero-side-top">
-            <div>
-              <p className="side-label">Operator</p>
-              <strong>{wallet.account ? shortAddress(wallet.account) : "Wallet not connected"}</strong>
-            </div>
-            <div>
-              <p className="side-label">Network</p>
-              <strong>
-                {wallet.networkPassphrase
-                  ? getNetworkLabel(wallet.networkPassphrase)
-                  : "Awaiting Freighter"}
-              </strong>
-            </div>
-          </div>
-
-          <div className="hero-side-stat">
-            <span>Contract</span>
-            <strong>{configuredContractId ? shortAddress(configuredContractId) : "Not deployed"}</strong>
-            <div className="hero-side-links">
-              {contractExplorerLink ? (
-                <a href={contractExplorerLink} target="_blank" rel="noreferrer">
-                  Open in Stellar Lab
-                </a>
-              ) : null}
-              <a href={configuredRpcUrl} target="_blank" rel="noreferrer">
-                View RPC
-              </a>
-            </div>
-          </div>
-
-          <div className="progress-shell">
-            <div className="progress-labels">
-              <span>Forge completion</span>
-              <span>{dashboard ? `${weeklyProgress}%` : "0%"}</span>
-            </div>
-            <div className="progress-track">
-              <span className="progress-fill" style={{ width: `${weeklyProgress}%` }} />
-            </div>
-          </div>
-
-          <p className="hero-note">
-            Built for focused operators with wallet-based actions, direct Soroban writes, and a
-            live contract activity pulse on Stellar Testnet.
-          </p>
+        <nav className="nav-links">
+          <button className={`nav-item ${page === "dashboard" ? "active" : ""}`} onClick={() => setPage("dashboard")}>
+            📊 Dashboard
+          </button>
+          <button className={`nav-item ${page === "log" ? "active" : ""}`} onClick={() => setPage("log")}>
+            ⏱️ Log Focus
+          </button>
+          <button className={`nav-item ${page === "profile" ? "active" : ""}`} onClick={() => setPage("profile")}>
+            👤 Profile & Target
+          </button>
+          <button className={`nav-item ${page === "badges" ? "active" : ""}`} onClick={() => setPage("badges")}>
+            🏆 Achievements
+          </button>
+          <button className={`nav-item ${page === "history" ? "active" : ""}`} onClick={() => setPage("history")}>
+            📜 Chain History
+          </button>
+        </nav>
+        <div className="sidebar-footer">
+          <span className="network-pill">
+            {wallet.networkPassphrase ? getNetworkLabel(wallet.networkPassphrase) : "Freighter offline"}
+          </span>
         </div>
-      </header>
+      </aside>
 
-      <section className="status-banner">
-        <div>
-          <p className="status-label">Live status</p>
-          <p className="status-copy">
-            {wallet.error ||
-              (wrongNetwork
-                ? `Connected to ${getNetworkLabel(wallet.networkPassphrase)}. Switch Freighter to ${getNetworkLabel(configuredNetworkPassphrase)}.`
-                : txState.message ||
-                  (contractReady
-                    ? "Ready to read and write focus sessions on Stellar. Contract stats and recent contract events refresh automatically."
-                    : "Deploy the Soroban contract and export the frontend config before using the app."))}
-          </p>
-        </div>
-        {txExplorerLink ? (
-          <a className="status-link" href={txExplorerLink} target="_blank" rel="noreferrer">
-            View transaction
-          </a>
-        ) : null}
-      </section>
-
-      <section className="metrics-grid">
-        <MetricCard
-          label="Focus logged"
-          value={dashboard ? formatMinutes(dashboard.totalMinutes) : "0m"}
-          note={dashboard ? `${dashboard.sessionCount} chain-recorded sessions` : "Starts after your first session"}
-          loading={dashboardQuery.isLoading}
-        />
-        <MetricCard
-          label="This week"
-          value={dashboard ? formatMinutes(dashboard.minutesThisWeek) : "0m"}
-          note={
-            dashboard
-              ? `${Math.max(dashboard.weeklyGoalMinutes - dashboard.minutesThisWeek, 0)} minutes left to target`
-              : "Set a weekly goal to begin"
-          }
-          loading={dashboardQuery.isLoading}
-        />
-        <MetricCard
-          label="Streak heat"
-          value={
-            dashboard
-              ? `${dashboard.currentStreak} day${dashboard.currentStreak === 1 ? "" : "s"}`
-              : "0 days"
-          }
-          note={
-            dashboard
-              ? dashboard.goalReachedThisWeek
-                ? "Weekly target already cleared"
-                : "Keep the chain warm"
-              : "Consecutive-day momentum tracker"
-          }
-          loading={dashboardQuery.isLoading}
-        />
-        <MetricCard
-          label="Operator tag"
-          value={dashboard?.displayName || "No profile"}
-          note={wallet.account ? shortAddress(wallet.account) : "Connect to personalize"}
-          loading={dashboardQuery.isLoading}
-        />
-        <MetricCard
-          label="Network builders"
-          value={globalStats ? String(globalStats.learnerCount) : "0"}
-          note={contractReady ? "Profiles created on this contract" : "Deploy contract to activate"}
-          loading={globalStatsQuery.isLoading}
-        />
-        <MetricCard
-          label="Chain sessions"
-          value={globalStats ? String(globalStats.totalSessions) : "0"}
-          note={
-            globalStats
-              ? `${formatMinutes(globalStats.totalMinutes)} recorded across the contract`
-              : "Network-wide session total"
-          }
-          loading={globalStatsQuery.isLoading}
-        />
-      </section>
-
-      {!contractReady ? (
-        <Panel
-          eyebrow="Deployment runway"
-          title="Deploy the ledger and connect the app"
-          body="The frontend is already wired. Build the Rust contract, deploy with Stellar CLI, and export the contract ID so the app can read and write on-chain."
-          tone="mint"
-        >
-          <div className="code-stack">
-            <code>stellar keys generate alice --network testnet --fund</code>
-            <code>npm run contract:build</code>
-            <code>npm run contract:deploy</code>
-            <code>npm run export:frontend</code>
+      <main className="main-content">
+        <header className="main-header">
+          <div className="header-status">
+            <span className="live-dot-wrapper">
+              <span className="live-dot" /> Live RPC
+            </span>
+            <span className="wallet-addr">{wallet.account ? shortAddress(wallet.account) : "No wallet connected"}</span>
           </div>
-        </Panel>
-      ) : null}
+          <button className="button button-header" onClick={handleConnectWallet} disabled={wallet.isConnecting}>
+            {wallet.isConnecting ? "Connecting..." : wallet.account ? "Wallet Linked" : "Link Wallet"}
+          </button>
+        </header>
 
-      <section className="panel-grid">
-        <Panel
-          eyebrow="Contract snapshot"
-          title="Live Soroban network overview"
-          body="These contract-wide stats are read without a wallet so anyone can inspect adoption and recent activity before connecting."
-          tone="mint"
-        >
-          <div className="detail-stack">
-            <div className="detail-row">
-              <span>Network</span>
-              <strong>{getNetworkLabel(configuredNetworkPassphrase)}</strong>
-            </div>
-            <div className="detail-row">
-              <span>Contract ID</span>
-              <strong>{configuredContractId || "Missing config"}</strong>
-            </div>
-            <div className="detail-row">
-              <span>Last contract activity</span>
-              <strong>{formatDateTime(globalStats?.latestActivityAt)}</strong>
-            </div>
-            <div className="detail-row">
-              <span>RPC endpoint</span>
-              <strong>{configuredRpcUrl}</strong>
-            </div>
+        <section className="status-banner">
+          <div>
+            <p className="status-label">Status Info</p>
+            <p className="status-copy">{statusMessage}</p>
           </div>
-          {contractExplorerLink ? (
-            <a className="panel-link" href={contractExplorerLink} target="_blank" rel="noreferrer">
-              Inspect contract in Stellar Lab
+          {txExplorerLink ? (
+            <a className="status-link" href={txExplorerLink} target="_blank" rel="noreferrer">
+              View transaction
             </a>
           ) : null}
-        </Panel>
+        </section>
 
-        <Panel
-          eyebrow="Operator setup"
-          title="Create or refresh your focus identity"
-          body="Save a public display name and the number of deep-work minutes you want to land each week."
-          tone="ember"
-        >
-          <form className="form-grid" onSubmit={handleProfileSubmit}>
-            <label>
-              <span>Display name</span>
-              <input
-                type="text"
-                maxLength="32"
-                required
-                placeholder="Signal Architect"
-                value={profileForm.displayName}
-                onChange={(event) =>
-                  setProfileForm((current) => ({ ...current, displayName: event.target.value }))
-                }
+        {page === "dashboard" && (
+          <div className="page-fade">
+            <section className="metrics-grid">
+              <MetricCard
+                label="Forge Time"
+                value={dashboard ? formatMinutes(dashboard.totalMinutes) : "0m"}
+                note={dashboard ? `${dashboard.sessionCount} deep blocks` : "No sessions logged"}
+                loading={dashboardQuery.isLoading}
               />
-            </label>
-            <label>
-              <span>Weekly goal (minutes)</span>
-              <input
-                type="number"
-                min="30"
-                max="5000"
-                step="5"
-                required
-                value={profileForm.weeklyGoalMinutes}
-                onChange={(event) =>
-                  setProfileForm((current) => ({
-                    ...current,
-                    weeklyGoalMinutes: event.target.value
-                  }))
-                }
+              <MetricCard
+                label="Target Status"
+                value={dashboard ? formatMinutes(dashboard.minutesThisWeek) : "0m"}
+                note={dashboard ? `${Math.max(dashboard.weeklyGoalMinutes - dashboard.minutesThisWeek, 0)}m remaining` : "No target set"}
+                loading={dashboardQuery.isLoading}
               />
-            </label>
-            <button
-              className="button button-primary"
-              type="submit"
-              disabled={anyMutationPending || !wallet.account || !contractReady}
-            >
-              {saveProfileMutation.isPending ? "Saving..." : "Save profile"}
-            </button>
-          </form>
-        </Panel>
+              <MetricCard
+                label="Forge Streak"
+                value={dashboard ? `${dashboard.currentStreak} day${dashboard.currentStreak === 1 ? "" : "s"}` : "0 days"}
+                note={dashboard?.goalReachedThisWeek ? "Weekly target completed" : "Keep forging"}
+                loading={dashboardQuery.isLoading}
+              />
+              <MetricCard
+                label="Global Operators"
+                value={globalStats ? String(globalStats.learnerCount) : "0"}
+                note="Profiles registered"
+                loading={globalStatsQuery.isLoading}
+              />
+            </section>
 
-        <Panel
-          eyebrow="Target control"
-          title="Retune the weekly forge"
-          body="Adjust your target whenever your sprint cadence changes. The contract still resets weekly progress on the next on-chain week."
-          tone="mint"
-        >
-          <form className="form-grid" onSubmit={handleGoalSubmit}>
-            <label>
-              <span>New weekly goal</span>
-              <input
-                type="number"
-                min="30"
-                max="5000"
-                step="5"
-                required
-                value={goalForm}
-                onChange={(event) => setGoalForm(event.target.value)}
-              />
-            </label>
-            <button
-              className="button button-secondary"
-              type="submit"
-              disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}
-            >
-              {updateGoalMutation.isPending ? "Updating..." : "Update goal"}
-            </button>
-          </form>
-        </Panel>
-
-        <Panel
-          eyebrow="Session log"
-          title="Record a deep-work block"
-          body="Capture the topic, duration, and resulting streak impact. The feed below refreshes after every confirmed Soroban write."
-          tone="ink"
-        >
-          <form className="form-grid" onSubmit={handleSessionSubmit}>
-            <label>
-              <span>Focus topic</span>
-              <input
-                type="text"
-                maxLength="48"
-                required
-                placeholder="Systems design review"
-                value={sessionForm.topic}
-                onChange={(event) =>
-                  setSessionForm((current) => ({ ...current, topic: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              <span>Minutes invested</span>
-              <input
-                type="number"
-                min="5"
-                max="480"
-                step="5"
-                required
-                value={sessionForm.minutesSpent}
-                onChange={(event) =>
-                  setSessionForm((current) => ({
-                    ...current,
-                    minutesSpent: event.target.value
-                  }))
-                }
-              />
-            </label>
-            <button
-              className="button button-primary"
-              type="submit"
-              disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}
-            >
-              {logSessionMutation.isPending ? "Logging..." : "Log session"}
-            </button>
-          </form>
-        </Panel>
-      </section>
-
-      <section className="panel-grid panel-grid-single">
-        <Panel
-          eyebrow="Achievements"
-          title="On-Chain Badges"
-          body="Milestone rewards earned through focus achievements on the rewards contract via inter-contract communication (ICC)."
-          tone="mint"
-        >
-          {badgesQuery.isLoading ? (
-            <ActivitySkeleton />
-          ) : badgesQuery.data?.length ? (
-            <div className="badge-grid">
-              {badgesQuery.data.map((badgeId) => {
-                const def = badgeDefinitions[badgeId] || { name: `Badge #${badgeId}`, desc: "Milestone unlocked", color: "#71717a", icon: "🏆" };
-                return (
-                  <article className="badge-card" key={badgeId}>
-                    <span className="badge-icon-wrapper">{def.icon}</span>
-                    <h3>{def.name}</h3>
-                    <p>{def.desc}</p>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="empty-state">
-              No on-chain badges earned yet. Reach milestones of 60m, 300m, or 1000m total focus time to be awarded milestone badges.
-            </p>
-          )}
-        </Panel>
-      </section>
-
-      <section className="panel-grid panel-grid-bottom">
-        <Panel
-          eyebrow="Ledger feed"
-          title="Recent chain-confirmed focus sessions"
-          body="The latest five sessions are pulled directly from the deployed contract for this connected wallet."
-          tone="ink"
-        >
-          {sessionsQuery.isLoading ? (
-            <ActivitySkeleton />
-          ) : sessionsQuery.data?.length ? (
-            <div className="session-list">
-              {sessionsQuery.data.map((session) => (
-                <article className="session-card" key={session.id}>
-                  <div>
-                    <h3>{session.topic}</h3>
-                    <p>{formatDate(session.timestamp)}</p>
+            <div className="dashboard-summary-panel" style={{ marginTop: '1.5rem' }}>
+              <Panel eyebrow="Overview" title="ForgeMind Performance Dashboard" tone="mint">
+                <p className="lead" style={{ color: '#64748b', fontSize: '1rem', marginTop: 0 }}>
+                  Track your deep study effort, forge consecutive-day study streaks, and unlock cryptographic milestone badges on the Stellar blockchain.
+                </p>
+                <div className="progress-shell" style={{ marginTop: '2rem' }}>
+                  <div className="progress-labels">
+                    <span>Weekly Target Progress</span>
+                    <span>{dashboard ? `${weeklyProgress}%` : "0%"}</span>
                   </div>
-                  <div className="session-meta">
-                    <span>{formatMinutes(session.minutesSpent)}</span>
-                    <span>Streak {session.streakAfterLog}</span>
+                  <div className="progress-track">
+                    <span className="progress-fill" style={{ width: `${weeklyProgress}%` }} />
                   </div>
-                </article>
-              ))}
+                </div>
+              </Panel>
             </div>
-          ) : (
-            <p className="empty-state">
-              {dashboard
-                ? "Your feed will populate after the first logged focus block."
-                : "Create a profile first, then the last five sessions will appear here."}
-            </p>
-          )}
-        </Panel>
-
-        <Panel
-          eyebrow="Live event pulse"
-          title="Recent contract activity"
-          body="This feed polls Soroban RPC for the latest contract events, which makes the frontend feel more alive even when you are not the wallet currently writing."
-          tone="ember"
-        >
-          <div className="panel-toolbar">
-            <ActivityTicker active={contractEventsQuery.isFetching} />
           </div>
+        )}
 
-          {contractEventsQuery.isLoading ? (
-            <ActivitySkeleton />
-          ) : contractEventsQuery.data?.length ? (
-            <div className="event-stream">
-              {contractEventsQuery.data.map((event) => (
-                <article className="event-card" key={event.id}>
-                  <div>
-                    <p className="event-kicker">{event.summary}</p>
-                    <h3>{event.topics.join(" / ") || "Contract event"}</h3>
-                    <p>{formatDateTime(event.closedAt)}</p>
-                  </div>
-                  <div className="event-meta">
-                    <span>Ledger {event.ledger}</span>
-                    {event.txHash ? (
-                      <a
-                        href={getExplorerLink(configuredNetworkPassphrase, event.txHash)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        View tx
-                      </a>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
+        {page === "log" && (
+          <div className="page-fade">
+            <Panel eyebrow="Action" title="Forge Focus Block" tone="ink">
+              <form className="form-grid" onSubmit={handleSessionSubmit}>
+                <label>
+                  <span>Focus topic</span>
+                  <input type="text" maxLength="48" required placeholder="Systems design review" value={sessionForm.topic} onChange={(e) => setSessionForm(curr => ({ ...curr, topic: e.target.value }))} />
+                </label>
+                <label>
+                  <span>Minutes invested</span>
+                  <input type="number" min="5" max="480" step="5" required value={sessionForm.minutesSpent} onChange={(e) => setSessionForm(curr => ({ ...curr, minutesSpent: e.target.value }))} />
+                </label>
+                <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}>
+                  {logSessionMutation.isPending ? "Logging..." : "Log focus session"}
+                </button>
+              </form>
+            </Panel>
+          </div>
+        )}
+
+        {page === "profile" && (
+          <div className="page-fade">
+            <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+              <Panel eyebrow="Setup" title="Operator Settings" tone="ember">
+                <form className="form-grid" onSubmit={handleProfileSubmit}>
+                  <label>
+                    <span>Display name</span>
+                    <input type="text" maxLength="32" required placeholder="Signal Architect" value={profileForm.displayName} onChange={(e) => setProfileForm(curr => ({ ...curr, displayName: e.target.value }))} />
+                  </label>
+                  <label>
+                    <span>Weekly goal (minutes)</span>
+                    <input type="number" min="30" max="5000" step="5" required value={profileForm.weeklyGoalMinutes} onChange={(e) => setProfileForm(curr => ({ ...curr, weeklyGoalMinutes: e.target.value }))} />
+                  </label>
+                  <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !contractReady}>
+                    {saveProfileMutation.isPending ? "Saving..." : "Save profile"}
+                  </button>
+                </form>
+              </Panel>
+
+              <Panel eyebrow="Target" title="Retune target goal" tone="mint">
+                <form className="form-grid" onSubmit={handleGoalSubmit}>
+                  <label>
+                    <span>New weekly goal</span>
+                    <input type="number" min="30" max="5000" step="5" required value={goalForm} onChange={(e) => setGoalForm(e.target.value)} />
+                  </label>
+                  <button className="button button-secondary" type="submit" disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}>
+                    {updateGoalMutation.isPending ? "Updating..." : "Update goal"}
+                  </button>
+                </form>
+              </Panel>
             </div>
-          ) : (
-            <p className="empty-state">
-              No recent events were returned by the current RPC retention window yet. New on-chain
-              profile saves and session logs will appear here automatically.
-            </p>
-          )}
-        </Panel>
+          </div>
+        )}
 
-        <Panel
-          eyebrow="Platform overview"
-          title="How FocusForge works"
-          body="FocusForge combines Freighter wallet access, Soroban contract writes, live contract stats, and event-aware UX for tracking deep-work sessions on Stellar."
-          tone="mint"
-        >
-          <ul className="check-list">
-            <li>Connect a Freighter wallet on Stellar Testnet</li>
-            <li>Create a profile and set a weekly focus target</li>
-            <li>Log verified deep-work sessions on-chain</li>
-            <li>Track weekly progress, totals, streak momentum, and contract-wide activity</li>
-          </ul>
-        </Panel>
-      </section>
+        {page === "badges" && (
+          <div className="page-fade">
+            <Panel eyebrow="Achievements" title="Cryptographic Milestone Badges" tone="mint">
+              {badgesQuery.isLoading ? (
+                <ActivitySkeleton />
+              ) : badgesQuery.data?.length ? (
+                <div className="badge-grid">
+                  {badgesQuery.data.map((badgeId) => {
+                    const def = badgeDefinitions[badgeId] || { name: `Badge #${badgeId}`, desc: "Milestone unlocked", icon: "🏆" };
+                    return (
+                      <article className="badge-card" key={badgeId}>
+                        <span className="badge-icon-wrapper">{def.icon}</span>
+                        <h3>{def.name}</h3>
+                        <p>{def.desc}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="empty-state">No badges earned yet. Forge focus blocks to unlock achievements on-chain.</p>
+              )}
+            </Panel>
+          </div>
+        )}
+
+        {page === "history" && (
+          <div className="page-fade">
+            <div className="history-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1.5rem' }}>
+              <Panel eyebrow="Ledger" title="Recent Sessions" tone="ink">
+                {sessionsQuery.isLoading ? (
+                  <ActivitySkeleton />
+                ) : sessionsQuery.data?.length ? (
+                  <div className="session-list">
+                    {sessionsQuery.data.map((session) => (
+                      <article className="session-card" key={session.id}>
+                        <div>
+                          <h3>{session.topic}</h3>
+                          <p>{formatDate(session.timestamp)}</p>
+                        </div>
+                        <div className="session-meta">
+                          <span>{formatMinutes(session.minutesSpent)}</span>
+                          <span>Streak {session.streakAfterLog}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-state">No focus blocks recorded on-chain yet.</p>
+                )}
+              </Panel>
+
+              <Panel eyebrow="RPC" title="Contract Events" tone="ember">
+                <div className="panel-toolbar" style={{ marginBottom: '1rem' }}>
+                  <ActivityTicker active={contractEventsQuery.isFetching} />
+                </div>
+                {contractEventsQuery.isLoading ? (
+                  <ActivitySkeleton />
+                ) : contractEventsQuery.data?.length ? (
+                  <div className="event-stream">
+                    {contractEventsQuery.data.map((event) => (
+                      <article className="event-card" key={event.id}>
+                        <div>
+                          <p className="event-kicker">{event.summary}</p>
+                          <h3>{event.topics.join(" / ")}</h3>
+                          <p>{formatDateTime(event.closedAt)}</p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="empty-state">No recent contract events detected.</p>
+                )}
+              </Panel>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

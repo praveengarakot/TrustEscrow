@@ -1,8 +1,8 @@
-# FocusForge
+# ForgeMind
 
 [![CI](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml)
 
-FocusForge is a Stellar Soroban Level 4 submission for tracking deep-work sessions on-chain. Operators connect Freighter, create a public profile, set a weekly focus target, log verified sessions, and monitor both personal progress and contract-wide activity from a responsive production frontend.
+ForgeMind is a Stellar Soroban Level 4 submission for tracking deep-work sessions on-chain. Operators connect Freighter, create a public profile, set a weekly target, log verified sessions, and monitor both personal progress and contract-wide activity from a responsive production frontend.
 
 ## Live Submission Links
 
@@ -15,19 +15,19 @@ FocusForge is a Stellar Soroban Level 4 submission for tracking deep-work sessio
 
 ### Desktop UI
 
-![FocusForge desktop UI](./UI.png)
+![ForgeMind desktop UI](./UI.png)
 
 ### Mobile UI
 
-![FocusForge mobile UI](./mobile.png)
+![ForgeMind mobile UI](./mobile.png)
 
 ### CI/CD
 
-![FocusForge CI/CD](./cicd.png)
+![ForgeMind CI/CD](./cicd.png)
 
 ## Project Overview
 
-FocusForge helps a learner or builder prove focused work on-chain. Each wallet can:
+ForgeMind helps a learner or builder prove focused work on-chain. Each wallet can:
 
 - Create or update a profile with a public display name
 - Set a weekly goal in minutes
