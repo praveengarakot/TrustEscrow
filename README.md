@@ -8,7 +8,7 @@ FocusForge is a Stellar Soroban Level 4 submission for tracking deep-work sessio
 
 - Public repository: `https://github.com/barish245/focusforge-ledger`
 - Live demo: `https://focusforge-ledger-ten.vercel.app`
-- Vercel production deployment: `https://focusforge-ledger-ten.vercel.app`
+- Vercel production deployment: `https://focusforge-ledger-d00cbokkh-deep-sahas-projects-5b5ba27c.vercel.app`
 - MVP video: `https://drive.google.com/file/d/1GvgDGCJqStruF6dRhULNyLi7KjuHdDUx/view?usp=sharing`
 
 ## Screenshots
@@ -17,17 +17,13 @@ FocusForge is a Stellar Soroban Level 4 submission for tracking deep-work sessio
 
 ![FocusForge desktop UI](./UI.png)
 
-### Mobile responsive view
+### Mobile UI
 
-![FocusForge mobile responsive view](./assets/mobile-responsive.png)
+![FocusForge mobile UI](./mobile.png)
 
-## Level 4 Highlights
+### CI/CD
 
-- Soroban smart contract with profile storage, weekly goal management, session logging, streak tracking, and global contract stats
-- Frontend upgraded with live contract overview, recent contract event polling, clearer production links, and stronger mobile responsiveness
-- Production deployment on Vercel
-- CI workflow covering Rust formatting, contract tests, wasm build, frontend lint, and frontend build
-- 8+ meaningful git commits in the repository history
+![FocusForge CI/CD](./cicd.png)
 
 ## Project Overview
 
@@ -241,4 +237,3 @@ This submission was strengthened with richer on-chain UX and live contract activ
 - Inter-contract call note included: `Yes`
 - Token/pool note included: `Yes`
 - Live frontend deployed: `Yes`
-
