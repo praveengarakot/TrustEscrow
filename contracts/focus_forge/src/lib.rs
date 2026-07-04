@@ -1,96 +1,78 @@
 #![no_std]
 
 use soroban_sdk::{
-    contract, contractevent, contractimpl, contracttype, Address, Env, IntoVal, String,
+    contract, contractevent, contractimpl, contracttype, Address, Env, IntoVal, String, Vec,
 };
 
-const DAY_IN_SECONDS: u64 = 86_400;
-const WEEK_IN_SECONDS: u64 = 604_800;
-
-pub const MIN_SESSION_MINUTES: u32 = 5;
-pub const MAX_SESSION_MINUTES: u32 = 480;
-pub const MIN_GOAL_MINUTES: u32 = 30;
-pub const MAX_GOAL_MINUTES: u32 = 5_000;
-
 #[derive(Clone)]
 #[contracttype]
-pub struct LearnerProfile {
-    pub display_name: String,
+pub struct Project {
+    pub client: Address,
+    pub provider: Address,
+    pub title: String,
+    pub budget: i128,
+    pub milestone_count: u32,
+    pub status: u32, // 0 = Active, 1 = Completed, 2 = Disputed
     pub created_at: u64,
-    pub last_study_day: u64,
-    pub active_week: u64,
-    pub weekly_goal_minutes: u32,
-    pub total_minutes: u32,
-    pub minutes_this_week: u32,
-    pub session_count: u32,
-    pub current_streak: u32,
 }
 
 #[derive(Clone)]
 #[contracttype]
-pub struct StudySession {
-    pub topic: String,
-    pub minutes_spent: u32,
-    pub timestamp: u64,
-    pub streak_after_log: u32,
-}
-
-#[derive(Clone)]
-#[contracttype]
-pub struct Dashboard {
-    pub display_name: String,
-    pub weekly_goal_minutes: u32,
-    pub total_minutes: u32,
-    pub minutes_this_week: u32,
-    pub session_count: u32,
-    pub current_streak: u32,
-    pub created_at: u64,
-    pub goal_reached_this_week: bool,
+pub struct Milestone {
+    pub title: String,
+    pub amount: i128,
+    pub status: u32, // 0 = Pending, 1 = Submitted, 2 = Approved, 3 = Disputed, 4 = Refunded
+    pub proof_url: String,
+    pub completed_at: u64,
 }
 
 #[derive(Clone)]
 #[contracttype]
 pub struct GlobalStats {
-    pub learner_count: u32,
-    pub total_sessions: u32,
-    pub total_minutes: u32,
-    pub latest_activity_at: u64,
+    pub project_count: u32,
+    pub total_budget: i128,
+    pub active_escrow: i128,
 }
 
 #[contractevent]
 #[derive(Clone)]
-pub struct ProfileSaved {
-    #[topic]
-    pub learner: Address,
-    pub display_name: String,
-    pub weekly_goal_minutes: u32,
+pub struct ProjectCreated {
+    pub project_id: u32,
+    pub client: Address,
+    pub provider: Address,
+    pub title: String,
+    pub budget: i128,
 }
 
 #[contractevent]
 #[derive(Clone)]
-pub struct WeeklyGoalUpdated {
-    #[topic]
-    pub learner: Address,
-    pub weekly_goal_minutes: u32,
+pub struct MilestoneSubmitted {
+    pub project_id: u32,
+    pub milestone_index: u32,
+    pub proof_url: String,
 }
 
 #[contractevent]
 #[derive(Clone)]
-pub struct StudySessionLogged {
-    #[topic]
-    pub learner: Address,
-    pub topic: String,
-    pub minutes_spent: u32,
-    pub minutes_this_week: u32,
-    pub current_streak: u32,
+pub struct MilestoneApproved {
+    pub project_id: u32,
+    pub milestone_index: u32,
+    pub amount: i128,
+}
+
+#[contractevent]
+#[derive(Clone)]
+pub struct MilestoneDisputed {
+    pub project_id: u32,
+    pub milestone_index: u32,
 }
 
 #[derive(Clone)]
 #[contracttype]
 enum DataKey {
-    Profile(Address),
-    Session(Address, u32),
-    RegisteredLearner(Address),
+    Project(u32),
+    Milestone(u32, u32),
+    UserProjects(Address),
     GlobalStats,
     Admin,
     RewardsContract,
@@ -109,6 +91,15 @@ impl FocusForge {
         env.storage()
             .instance()
             .set(&DataKey::RewardsContract, &rewards_contract);
+
+        let initial_stats = GlobalStats {
+            project_count: 0,
+            total_budget: 0,
+            active_escrow: 0,
+        };
+        env.storage()
+            .persistent()
+            .set(&DataKey::GlobalStats, &initial_stats);
     }
 
     pub fn get_rewards_contract(env: Env) -> Address {
@@ -117,409 +108,521 @@ impl FocusForge {
             .get(&DataKey::RewardsContract)
             .unwrap_or_else(|| panic!("Rewards contract not configured"))
     }
-    pub fn save_profile(
-        env: Env,
-        learner: Address,
-        display_name: String,
-        weekly_goal_minutes: u32,
-    ) {
-        learner.require_auth();
-        validate_display_name(&display_name);
-        validate_weekly_goal(weekly_goal_minutes);
 
-        let now = env.ledger().timestamp();
-        let current_week = current_week(&env);
-        let is_new_profile = !env
+    pub fn create_project(
+        env: Env,
+        client: Address,
+        provider: Address,
+        title: String,
+        budget: i128,
+        milestone_titles: Vec<String>,
+        milestone_amounts: Vec<i128>,
+    ) -> u32 {
+        client.require_auth();
+        assert!(budget > 0, "Budget must be greater than zero");
+        assert!(
+            milestone_titles.len() == milestone_amounts.len(),
+            "Milestones count mismatch"
+        );
+        assert!(
+            milestone_titles.len() > 0,
+            "At least one milestone is required"
+        );
+
+        let mut sum_amount: i128 = 0;
+        for amt in milestone_amounts.iter() {
+            assert!(amt > 0, "Milestone amount must be positive");
+            sum_amount += amt;
+        }
+        assert!(
+            sum_amount == budget,
+            "Sum of milestone amounts must match total budget"
+        );
+
+        let mut stats: GlobalStats = env
             .storage()
             .persistent()
-            .has(&DataKey::RegisteredLearner(learner.clone()));
+            .get(&DataKey::GlobalStats)
+            .unwrap();
 
-        let mut profile = read_profile_optional(&env, &learner).unwrap_or(LearnerProfile {
-            display_name: display_name.clone(),
-            created_at: now,
-            last_study_day: 0,
-            active_week: current_week,
-            weekly_goal_minutes,
-            total_minutes: 0,
-            minutes_this_week: 0,
-            session_count: 0,
-            current_streak: 0,
-        });
+        let project_id = stats.project_count;
+        stats.project_count += 1;
+        stats.total_budget += budget;
+        stats.active_escrow += budget;
+        env.storage()
+            .persistent()
+            .set(&DataKey::GlobalStats, &stats);
 
-        sync_week(&mut profile, current_week);
-        profile.display_name = display_name.clone();
-        profile.weekly_goal_minutes = weekly_goal_minutes;
-
-        write_profile(&env, &learner, &profile);
-        if is_new_profile {
-            register_learner(&env, &learner, now);
-        }
-        ProfileSaved {
-            learner,
-            display_name,
-            weekly_goal_minutes,
-        }
-        .publish(&env);
-    }
-
-    pub fn update_weekly_goal(env: Env, learner: Address, new_goal_minutes: u32) {
-        learner.require_auth();
-        validate_weekly_goal(new_goal_minutes);
-
-        let mut profile = read_profile_required(&env, &learner);
-        sync_week(&mut profile, current_week(&env));
-        profile.weekly_goal_minutes = new_goal_minutes;
-
-        write_profile(&env, &learner, &profile);
-        WeeklyGoalUpdated {
-            learner,
-            weekly_goal_minutes: new_goal_minutes,
-        }
-        .publish(&env);
-    }
-
-    pub fn log_session(env: Env, learner: Address, topic: String, minutes_spent: u32) {
-        learner.require_auth();
-        validate_topic(&topic);
-        validate_session_minutes(minutes_spent);
-
-        let mut profile = read_profile_required(&env, &learner);
-        sync_week(&mut profile, current_week(&env));
-
-        let current_day = current_day(&env);
-        if profile.session_count == 0 {
-            profile.current_streak = 1;
-        } else if current_day == profile.last_study_day {
-        } else if current_day == profile.last_study_day + 1 {
-            profile.current_streak += 1;
-        } else {
-            profile.current_streak = 1;
-        }
-
-        profile.last_study_day = current_day;
-        profile.total_minutes += minutes_spent;
-        profile.minutes_this_week += minutes_spent;
-
-        let session = StudySession {
-            topic: topic.clone(),
-            minutes_spent,
-            timestamp: env.ledger().timestamp(),
-            streak_after_log: profile.current_streak,
+        let project = Project {
+            client: client.clone(),
+            provider: provider.clone(),
+            title: title.clone(),
+            budget,
+            milestone_count: milestone_titles.len(),
+            status: 0,
+            created_at: env.ledger().timestamp(),
         };
-
-        write_session(&env, &learner, profile.session_count, &session);
-        profile.session_count += 1;
-        write_profile(&env, &learner, &profile);
-        record_session_totals(&env, minutes_spent, session.timestamp);
-
-        StudySessionLogged {
-            learner: learner.clone(),
-            topic,
-            minutes_spent,
-            minutes_this_week: profile.minutes_this_week,
-            current_streak: profile.current_streak,
-        }
-        .publish(&env);
-
-        if let Some(rewards_contract) = env
-            .storage()
-            .instance()
-            .get::<_, Address>(&DataKey::RewardsContract)
-        {
-            let total_min = profile.total_minutes;
-            let mut badge_type: u32 = 0;
-            if total_min >= 1000 {
-                badge_type = 3; // Gold
-            } else if total_min >= 300 {
-                badge_type = 2; // Silver
-            } else if total_min >= 60 {
-                badge_type = 1; // Bronze
-            }
-
-            if badge_type > 0 {
-                env.invoke_contract::<()>(
-                    &rewards_contract,
-                    &soroban_sdk::Symbol::new(&env, "award_badge"),
-                    soroban_sdk::vec![&env, learner.into_val(&env), badge_type.into_val(&env)],
-                );
-            }
-        }
-    }
-
-    pub fn has_profile(env: Env, learner: Address) -> bool {
-        env.storage().persistent().has(&DataKey::Profile(learner))
-    }
-
-    pub fn get_dashboard(env: Env, learner: Address) -> Dashboard {
-        let mut profile = read_profile_required(&env, &learner);
-        if current_week(&env) > profile.active_week {
-            profile.minutes_this_week = 0;
-        }
-
-        Dashboard {
-            display_name: profile.display_name,
-            weekly_goal_minutes: profile.weekly_goal_minutes,
-            total_minutes: profile.total_minutes,
-            minutes_this_week: profile.minutes_this_week,
-            session_count: profile.session_count,
-            current_streak: profile.current_streak,
-            created_at: profile.created_at,
-            goal_reached_this_week: profile.minutes_this_week >= profile.weekly_goal_minutes,
-        }
-    }
-
-    pub fn get_session_count(env: Env, learner: Address) -> u32 {
-        read_profile_optional(&env, &learner)
-            .map(|profile| profile.session_count)
-            .unwrap_or(0)
-    }
-
-    pub fn get_session(env: Env, learner: Address, index: u32) -> StudySession {
-        let count = Self::get_session_count(env.clone(), learner.clone());
-        assert!(index < count, "Session index out of bounds");
 
         env.storage()
             .persistent()
-            .get(&DataKey::Session(learner, index))
-            .unwrap_or_else(|| panic!("Session not found"))
+            .set(&DataKey::Project(project_id), &project);
+
+        for i in 0..milestone_titles.len() {
+            let milestone = Milestone {
+                title: milestone_titles.get(i).unwrap(),
+                amount: milestone_amounts.get(i).unwrap(),
+                status: 0, // Pending
+                proof_url: String::from_str(&env, ""),
+                completed_at: 0,
+            };
+            env.storage()
+                .persistent()
+                .set(&DataKey::Milestone(project_id, i), &milestone);
+        }
+
+        // Map project to both client and provider
+        Self::add_user_project(&env, &client, project_id);
+        Self::add_user_project(&env, &provider, project_id);
+
+        ProjectCreated {
+            project_id,
+            client,
+            provider,
+            title,
+            budget,
+        }
+        .publish(&env);
+
+        project_id
+    }
+
+    pub fn submit_milestone_proof(
+        env: Env,
+        provider: Address,
+        project_id: u32,
+        milestone_index: u32,
+        proof_url: String,
+    ) {
+        provider.require_auth();
+
+        let project: Project = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Project(project_id))
+            .unwrap_or_else(|| panic!("Project not found"));
+
+        assert!(
+            provider == project.provider,
+            "Only the service provider can submit proof"
+        );
+
+        let m_key = DataKey::Milestone(project_id, milestone_index);
+        let mut milestone: Milestone = env
+            .storage()
+            .persistent()
+            .get(&m_key)
+            .unwrap_or_else(|| panic!("Milestone not found"));
+
+        assert!(milestone.status == 0, "Milestone is not in Pending state");
+        assert!(proof_url.len() > 0, "Proof URL cannot be empty");
+
+        milestone.status = 1; // Submitted
+        milestone.proof_url = proof_url.clone();
+        env.storage().persistent().set(&m_key, &milestone);
+
+        MilestoneSubmitted {
+            project_id,
+            milestone_index,
+            proof_url,
+        }
+        .publish(&env);
+    }
+
+    pub fn approve_milestone(env: Env, client: Address, project_id: u32, milestone_index: u32) {
+        client.require_auth();
+
+        let mut project: Project = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Project(project_id))
+            .unwrap_or_else(|| panic!("Project not found"));
+
+        assert!(
+            client == project.client,
+            "Only the client can approve milestones"
+        );
+
+        let m_key = DataKey::Milestone(project_id, milestone_index);
+        let mut milestone: Milestone = env
+            .storage()
+            .persistent()
+            .get(&m_key)
+            .unwrap_or_else(|| panic!("Milestone not found"));
+
+        // Can approve either from Pending (0) or Submitted (1) or Disputed (3)
+        assert!(
+            milestone.status == 0 || milestone.status == 1 || milestone.status == 3,
+            "Cannot approve this milestone"
+        );
+
+        milestone.status = 2; // Approved
+        milestone.completed_at = env.ledger().timestamp();
+        env.storage().persistent().set(&m_key, &milestone);
+
+        // Deduct active escrow
+        let mut stats: GlobalStats = env
+            .storage()
+            .persistent()
+            .get(&DataKey::GlobalStats)
+            .unwrap();
+        stats.active_escrow -= milestone.amount;
+        env.storage()
+            .persistent()
+            .set(&DataKey::GlobalStats, &stats);
+
+        MilestoneApproved {
+            project_id,
+            milestone_index,
+            amount: milestone.amount,
+        }
+        .publish(&env);
+
+        // Check if all milestones are approved to mark project as completed
+        let mut all_completed = true;
+        for i in 0..project.milestone_count {
+            let m: Milestone = env
+                .storage()
+                .persistent()
+                .get(&DataKey::Milestone(project_id, i))
+                .unwrap();
+            if m.status != 2 && m.status != 4 {
+                all_completed = false;
+                break;
+            }
+        }
+        if all_completed {
+            project.status = 1; // Completed
+            env.storage()
+                .persistent()
+                .set(&DataKey::Project(project_id), &project);
+        }
+    }
+
+    pub fn dispute_milestone(env: Env, caller: Address, project_id: u32, milestone_index: u32) {
+        caller.require_auth();
+
+        let mut project: Project = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Project(project_id))
+            .unwrap_or_else(|| panic!("Project not found"));
+
+        assert!(
+            caller == project.client || caller == project.provider,
+            "Only client or provider can raise a dispute"
+        );
+
+        let m_key = DataKey::Milestone(project_id, milestone_index);
+        let mut milestone: Milestone = env
+            .storage()
+            .persistent()
+            .get(&m_key)
+            .unwrap_or_else(|| panic!("Milestone not found"));
+
+        assert!(
+            milestone.status == 1 || milestone.status == 0,
+            "Can only dispute pending or submitted milestones"
+        );
+
+        milestone.status = 3; // Disputed
+        env.storage().persistent().set(&m_key, &milestone);
+
+        project.status = 2; // Disputed
+        env.storage()
+            .persistent()
+            .set(&DataKey::Project(project_id), &project);
+
+        MilestoneDisputed {
+            project_id,
+            milestone_index,
+        }
+        .publish(&env);
+
+        // Invoke the resolution/arbitration contract via ICC
+        let rewards_contract = Self::get_rewards_contract(env.clone());
+        env.invoke_contract::<()>(
+            &rewards_contract,
+            &soroban_sdk::Symbol::new(&env, "escalate_dispute"),
+            soroban_sdk::vec![
+                &env,
+                env.current_contract_address().into_val(&env),
+                project_id.into_val(&env),
+                milestone_index.into_val(&env),
+                project.client.into_val(&env),
+                project.provider.into_val(&env),
+                milestone.amount.into_val(&env),
+            ],
+        );
+    }
+
+    pub fn execute_resolution(
+        env: Env,
+        project_id: u32,
+        milestone_index: u32,
+        payout_to_provider: bool,
+    ) {
+        let rewards_contract = Self::get_rewards_contract(env.clone());
+        rewards_contract.require_auth();
+
+        let mut project: Project = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Project(project_id))
+            .unwrap_or_else(|| panic!("Project not found"));
+
+        let m_key = DataKey::Milestone(project_id, milestone_index);
+        let mut milestone: Milestone = env
+            .storage()
+            .persistent()
+            .get(&m_key)
+            .unwrap_or_else(|| panic!("Milestone not found"));
+
+        assert!(
+            milestone.status == 3,
+            "Milestone is not currently in dispute"
+        );
+
+        if payout_to_provider {
+            milestone.status = 2; // Approved
+        } else {
+            milestone.status = 4; // Refunded
+        }
+        milestone.completed_at = env.ledger().timestamp();
+        env.storage().persistent().set(&m_key, &milestone);
+
+        // Deduct active escrow
+        let mut stats: GlobalStats = env
+            .storage()
+            .persistent()
+            .get(&DataKey::GlobalStats)
+            .unwrap();
+        stats.active_escrow -= milestone.amount;
+        env.storage()
+            .persistent()
+            .set(&DataKey::GlobalStats, &stats);
+
+        // Check if project status can return to Active (0) or Completed (1)
+        let mut all_completed = true;
+        let mut has_disputes = false;
+        for i in 0..project.milestone_count {
+            let m: Milestone = env
+                .storage()
+                .persistent()
+                .get(&DataKey::Milestone(project_id, i))
+                .unwrap();
+            if m.status != 2 && m.status != 4 {
+                all_completed = false;
+            }
+            if m.status == 3 {
+                has_disputes = true;
+            }
+        }
+
+        if all_completed {
+            project.status = 1; // Completed
+        } else if !has_disputes {
+            project.status = 0; // Active (resolved)
+        }
+
+        env.storage()
+            .persistent()
+            .set(&DataKey::Project(project_id), &project);
+    }
+
+    pub fn get_project(env: Env, project_id: u32) -> Project {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Project(project_id))
+            .unwrap_or_else(|| panic!("Project not found"))
+    }
+
+    pub fn get_milestone(env: Env, project_id: u32, milestone_index: u32) -> Milestone {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Milestone(project_id, milestone_index))
+            .unwrap_or_else(|| panic!("Milestone not found"))
+    }
+
+    pub fn get_user_projects(env: Env, user: Address) -> Vec<u32> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::UserProjects(user))
+            .unwrap_or_else(|| Vec::new(&env))
     }
 
     pub fn get_global_stats(env: Env) -> GlobalStats {
-        read_global_stats(&env)
+        env.storage()
+            .persistent()
+            .get(&DataKey::GlobalStats)
+            .unwrap_or_else(|| GlobalStats {
+                project_count: 0,
+                total_budget: 0,
+                active_escrow: 0,
+            })
     }
-}
 
-fn read_profile_optional(env: &Env, learner: &Address) -> Option<LearnerProfile> {
-    env.storage()
-        .persistent()
-        .get(&DataKey::Profile(learner.clone()))
-}
-
-fn read_profile_required(env: &Env, learner: &Address) -> LearnerProfile {
-    read_profile_optional(env, learner).unwrap_or_else(|| panic!("Profile not found"))
-}
-
-fn write_profile(env: &Env, learner: &Address, profile: &LearnerProfile) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::Profile(learner.clone()), profile);
-}
-
-fn write_session(env: &Env, learner: &Address, index: u32, session: &StudySession) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::Session(learner.clone(), index), session);
-}
-
-fn default_global_stats() -> GlobalStats {
-    GlobalStats {
-        learner_count: 0,
-        total_sessions: 0,
-        total_minutes: 0,
-        latest_activity_at: 0,
+    fn add_user_project(env: &Env, user: &Address, project_id: u32) {
+        let key = DataKey::UserProjects(user.clone());
+        let mut list: Vec<u32> = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| Vec::new(env));
+        if !list.contains(project_id) {
+            list.push_back(project_id);
+            env.storage().persistent().set(&key, &list);
+        }
     }
-}
-
-fn read_global_stats(env: &Env) -> GlobalStats {
-    env.storage()
-        .persistent()
-        .get(&DataKey::GlobalStats)
-        .unwrap_or_else(default_global_stats)
-}
-
-fn write_global_stats(env: &Env, stats: &GlobalStats) {
-    env.storage().persistent().set(&DataKey::GlobalStats, stats);
-}
-
-fn register_learner(env: &Env, learner: &Address, created_at: u64) {
-    env.storage()
-        .persistent()
-        .set(&DataKey::RegisteredLearner(learner.clone()), &true);
-
-    let mut stats = read_global_stats(env);
-    stats.learner_count += 1;
-    if stats.latest_activity_at < created_at {
-        stats.latest_activity_at = created_at;
-    }
-    write_global_stats(env, &stats);
-}
-
-fn record_session_totals(env: &Env, minutes_spent: u32, timestamp: u64) {
-    let mut stats = read_global_stats(env);
-    stats.total_sessions += 1;
-    stats.total_minutes += minutes_spent;
-    stats.latest_activity_at = timestamp;
-    write_global_stats(env, &stats);
-}
-
-fn sync_week(profile: &mut LearnerProfile, current_week: u64) {
-    if current_week > profile.active_week {
-        profile.active_week = current_week;
-        profile.minutes_this_week = 0;
-    }
-}
-
-fn current_week(env: &Env) -> u64 {
-    env.ledger().timestamp() / WEEK_IN_SECONDS
-}
-
-fn current_day(env: &Env) -> u64 {
-    env.ledger().timestamp() / DAY_IN_SECONDS
-}
-
-fn validate_display_name(display_name: &String) {
-    let length = display_name.len();
-    assert!(
-        length >= 3 && length <= 32,
-        "Display name must be 3-32 chars"
-    );
-}
-
-fn validate_topic(topic: &String) {
-    let length = topic.len();
-    assert!(length >= 3 && length <= 48, "Topic must be 3-48 chars");
-}
-
-fn validate_session_minutes(minutes_spent: u32) {
-    assert!(
-        (MIN_SESSION_MINUTES..=MAX_SESSION_MINUTES).contains(&minutes_spent),
-        "Session minutes out of range"
-    );
-}
-
-fn validate_weekly_goal(weekly_goal_minutes: u32) {
-    assert!(
-        (MIN_GOAL_MINUTES..=MAX_GOAL_MINUTES).contains(&weekly_goal_minutes),
-        "Weekly goal out of range"
-    );
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::testutils::{Address as _, Ledger};
+    use soroban_sdk::{testutils::Address as _, Env};
 
+    // A mock contract representing the arbitration/rewards contract to test the ICC escalation and callback
     #[contract]
-    pub struct MockRewardsContract;
+    pub struct MockArbitrationContract;
 
     #[contractimpl]
-    impl MockRewardsContract {
-        pub fn initialize(env: Env, admin: Address) {}
-        pub fn award_badge(env: Env, learner: Address, badge_type: u32) {}
+    impl MockArbitrationContract {
+        pub fn initialize(env: Env, admin: Address) {
+            env.storage().instance().set(&DataKey::Admin, &admin);
+        }
+
+        pub fn get_admin(env: Env) -> Address {
+            env.storage().instance().get(&DataKey::Admin).unwrap()
+        }
+
+        pub fn escalate_dispute(
+            env: Env,
+            caller: Address,
+            project_id: u32,
+            _milestone_index: u32,
+            client: Address,
+            provider: Address,
+            amount: i128,
+        ) {
+            let admin = Self::get_admin(env.clone());
+            caller.require_auth();
+            assert!(caller == admin);
+
+            // Record dispute
+            let details = (client, provider, amount);
+            env.storage()
+                .persistent()
+                .set(&DataKey::Project(project_id), &details);
+        }
+
+        // Helper test function to trigger the callback on the main contract
+        pub fn force_resolve(
+            env: Env,
+            main_contract: Address,
+            project_id: u32,
+            milestone_index: u32,
+            payout: bool,
+        ) {
+            env.invoke_contract::<()>(
+                &main_contract,
+                &soroban_sdk::Symbol::new(&env, "execute_resolution"),
+                soroban_sdk::vec![
+                    &env,
+                    project_id.into_val(&env),
+                    milestone_index.into_val(&env),
+                    payout.into_val(&env),
+                ],
+            );
+        }
     }
 
-    fn setup() -> (Env, FocusForgeClient<'static>, Address, Address) {
+    #[test]
+    fn test_complete_escrow_workflow() {
         let env = Env::default();
-        let contract_id = env.register(FocusForge, ());
-        let client = FocusForgeClient::new(&env, &contract_id);
-
-        let rewards_id = env.register(MockRewardsContract, ());
-        let admin = Address::generate(&env);
-
-        client.initialize(&admin, &rewards_id);
-
         env.mock_all_auths();
-        (env, client, admin, rewards_id)
-    }
 
-    fn text(env: &Env, value: &str) -> String {
-        String::from_str(env, value)
-    }
+        let admin = Address::generate(&env);
+        let client = Address::generate(&env);
+        let provider = Address::generate(&env);
 
-    #[test]
-    fn creates_profile_and_reads_dashboard() {
-        let (env, client, learner, _) = setup();
+        let main_id = env.register_contract(None, FocusForge);
+        let arb_id = env.register_contract(None, MockArbitrationContract);
 
-        client.save_profile(&learner, &text(&env, "Deep Builder"), &360);
-        let dashboard = client.get_dashboard(&learner);
+        let main_client = FocusForgeClient::new(&env, &main_id);
+        let arb_client = MockArbitrationContractClient::new(&env, &arb_id);
 
-        assert_eq!(dashboard.display_name, text(&env, "Deep Builder"));
-        assert_eq!(dashboard.weekly_goal_minutes, 360);
-        assert_eq!(dashboard.total_minutes, 0);
-        assert!(!dashboard.goal_reached_this_week);
-    }
+        main_client.initialize(&admin, &arb_id);
+        arb_client.initialize(&main_id);
 
-    #[test]
-    fn logs_sessions_and_grows_streak_across_days() {
-        let (env, client, learner, _) = setup();
+        let title = String::from_str(&env, "Build Website");
+        let mut milestone_titles = Vec::new(&env);
+        milestone_titles.push_back(String::from_str(&env, "Design"));
+        milestone_titles.push_back(String::from_str(&env, "Development"));
 
-        client.save_profile(&learner, &text(&env, "Protocol Pilot"), &300);
-        client.log_session(&learner, &text(&env, "Rust basics"), &90);
+        let mut milestone_amounts = Vec::new(&env);
+        milestone_amounts.push_back(200);
+        milestone_amounts.push_back(300);
 
-        env.ledger().set_timestamp(DAY_IN_SECONDS + 90);
-        client.log_session(&learner, &text(&env, "Soroban auth"), &45);
+        // 1. Create Project
+        let project_id = main_client.create_project(
+            &client,
+            &provider,
+            &title,
+            &500,
+            &milestone_titles,
+            &milestone_amounts,
+        );
 
-        let dashboard = client.get_dashboard(&learner);
-        let session = client.get_session(&learner, &1);
+        assert_eq!(project_id, 0);
 
-        assert_eq!(dashboard.total_minutes, 135);
-        assert_eq!(dashboard.minutes_this_week, 135);
-        assert_eq!(dashboard.session_count, 2);
-        assert_eq!(dashboard.current_streak, 2);
-        assert_eq!(session.topic, text(&env, "Soroban auth"));
-        assert_eq!(session.minutes_spent, 45);
-    }
+        let project = main_client.get_project(&project_id);
+        assert_eq!(project.budget, 500);
+        assert_eq!(project.status, 0); // Active
 
-    #[test]
-    fn resets_weekly_progress_after_boundary() {
-        let (env, client, learner, _) = setup();
+        let m1 = main_client.get_milestone(&project_id, &0);
+        assert_eq!(m1.amount, 200);
+        assert_eq!(m1.status, 0); // Pending
 
-        client.save_profile(&learner, &text(&env, "Weekly Runner"), &240);
-        client.log_session(&learner, &text(&env, "Storage design"), &120);
+        // 2. Submit proof for milestone 1
+        let proof = String::from_str(&env, "https://github.com/myproof");
+        main_client.submit_milestone_proof(&provider, &project_id, &0, &proof);
 
-        env.ledger().set_timestamp(WEEK_IN_SECONDS + DAY_IN_SECONDS);
-        let dashboard = client.get_dashboard(&learner);
+        let m1_updated = main_client.get_milestone(&project_id, &0);
+        assert_eq!(m1_updated.status, 1); // Submitted
+        assert_eq!(m1_updated.proof_url, proof);
 
-        assert_eq!(dashboard.minutes_this_week, 0);
-        assert_eq!(dashboard.total_minutes, 120);
-    }
+        // 3. Client approves milestone 1
+        main_client.approve_milestone(&client, &project_id, &0);
+        let m1_approved = main_client.get_milestone(&project_id, &0);
+        assert_eq!(m1_approved.status, 2); // Approved
 
-    #[test]
-    fn tracks_global_stats_across_profiles_and_sessions() {
-        let (env, client, learner_one, _) = setup();
-        let learner_two = Address::generate(&env);
-        env.ledger().set_timestamp(1_000);
+        let stats = main_client.get_global_stats();
+        assert_eq!(stats.active_escrow, 300); // 500 - 200 approved
 
-        client.save_profile(&learner_one, &text(&env, "Session Crafter"), &240);
-        client.save_profile(&learner_two, &text(&env, "Ledger Watcher"), &360);
-        client.log_session(&learner_one, &text(&env, "Spec review"), &75);
-        client.log_session(&learner_one, &text(&env, "Frontend polish"), &45);
+        // 4. Raise dispute on milestone 2 (index 1)
+        main_client.dispute_milestone(&client, &project_id, &1);
+        let m2_disputed = main_client.get_milestone(&project_id, &1);
+        assert_eq!(m2_disputed.status, 3); // Disputed
 
-        let stats = client.get_global_stats();
+        let project_disputed = main_client.get_project(&project_id);
+        assert_eq!(project_disputed.status, 2); // Disputed
 
-        assert_eq!(stats.learner_count, 2);
-        assert_eq!(stats.total_sessions, 2);
-        assert_eq!(stats.total_minutes, 120);
-        assert!(stats.latest_activity_at > 0);
-    }
+        // 5. Force resolve milestone 2 via mock arbitration (payout to provider)
+        arb_client.force_resolve(&main_id, &project_id, &1, &true);
 
-    #[test]
-    #[should_panic(expected = "Profile not found")]
-    fn rejects_missing_profile_session_logs() {
-        let (env, client, learner, _) = setup();
-        client.log_session(&learner, &text(&env, "No profile yet"), &60);
-    }
+        let m2_resolved = main_client.get_milestone(&project_id, &1);
+        assert_eq!(m2_resolved.status, 2); // Approved (paid out)
 
-    #[test]
-    #[should_panic(expected = "Display name must be 3-32 chars")]
-    fn rejects_short_display_names() {
-        let (env, client, learner, _) = setup();
-        client.save_profile(&learner, &text(&env, "AB"), &200);
-    }
-
-    #[test]
-    #[should_panic(expected = "Session minutes out of range")]
-    fn rejects_short_sessions() {
-        let (env, client, learner, _) = setup();
-        client.save_profile(&learner, &text(&env, "Focus Friend"), &200);
-        client.log_session(&learner, &text(&env, "Edge case"), &4);
-    }
-
-    #[test]
-    #[should_panic(expected = "Weekly goal out of range")]
-    fn rejects_bad_goal_updates() {
-        let (env, client, learner, _) = setup();
-        client.save_profile(&learner, &text(&env, "Goal Guard"), &200);
-        client.update_weekly_goal(&learner, &20);
+        let project_final = main_client.get_project(&project_id);
+        assert_eq!(project_final.status, 1); // Completed
     }
 }
