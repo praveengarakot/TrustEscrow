@@ -8,7 +8,7 @@ FocusForge is a Stellar Soroban Level 4 submission for tracking deep-work sessio
 
 - Public repository: `https://github.com/barish245/focusforge-ledger`
 - Live demo: `https://focusforge-ledger-ten.vercel.app`
-- Vercel production deployment: `https://focusforge-ledger-d00cbokkh-deep-sahas-projects-5b5ba27c.vercel.app`
+- Vercel production deployment: `https://focusforge-ledger-ten.vercel.app`
 - MVP video: `https://drive.google.com/file/d/1GvgDGCJqStruF6dRhULNyLi7KjuHdDUx/view?usp=sharing`
 
 ## Screenshots
