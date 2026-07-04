@@ -1,6 +1,8 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractevent, contractimpl, contracttype, Address, Env, String, IntoVal};
+use soroban_sdk::{
+    contract, contractevent, contractimpl, contracttype, Address, Env, IntoVal, String,
+};
 
 const DAY_IN_SECONDS: u64 = 86_400;
 const WEEK_IN_SECONDS: u64 = 604_800;
@@ -104,7 +106,9 @@ impl FocusForge {
             panic!("Already initialized");
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::RewardsContract, &rewards_contract);
+        env.storage()
+            .instance()
+            .set(&DataKey::RewardsContract, &rewards_contract);
     }
 
     pub fn get_rewards_contract(env: Env) -> Address {
@@ -217,7 +221,11 @@ impl FocusForge {
         }
         .publish(&env);
 
-        if let Some(rewards_contract) = env.storage().instance().get::<_, Address>(&DataKey::RewardsContract) {
+        if let Some(rewards_contract) = env
+            .storage()
+            .instance()
+            .get::<_, Address>(&DataKey::RewardsContract)
+        {
             let total_min = profile.total_minutes;
             let mut badge_type: u32 = 0;
             if total_min >= 1000 {
@@ -404,12 +412,12 @@ mod test {
         let env = Env::default();
         let contract_id = env.register(FocusForge, ());
         let client = FocusForgeClient::new(&env, &contract_id);
-        
+
         let rewards_id = env.register(MockRewardsContract, ());
         let admin = Address::generate(&env);
-        
+
         client.initialize(&admin, &rewards_id);
-        
+
         env.mock_all_auths();
         (env, client, admin, rewards_id)
     }
