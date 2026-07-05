@@ -6,22 +6,19 @@ import {
   configuredNetworkPassphrase,
   connectWallet,
   discoverWalletState,
-  formatDate,
-  formatDateTime,
-  formatMinutes,
   getExplorerLink,
   getNetworkLabel,
   hasContractConfig,
-  logSession,
+  shortAddress,
   parseError,
   readContractEvents,
-  readDashboard,
   readGlobalStats,
-  readRecentSessions,
-  readBadges,
-  saveProfile,
-  shortAddress,
-  updateWeeklyGoal
+  readUserProjects,
+  createProject,
+  submitMilestoneProof,
+  approveMilestone,
+  disputeMilestone,
+  resolveDispute
 } from "./lib/skillSprint";
 
 const emptyWallet = {
@@ -37,12 +34,6 @@ const emptyTx = {
   status: "idle",
   message: "",
   hash: ""
-};
-
-const badgeDefinitions = {
-  1: { name: "Bronze Operator", desc: "Forged 60+ minutes of total focus time", color: "#8a5a36", icon: "🥉" },
-  2: { name: "Silver Operator", desc: "Forged 300+ minutes of total focus time", color: "#71717a", icon: "🥈" },
-  3: { name: "Gold Operator", desc: "Forged 1000+ minutes of total focus time", color: "#b45309", icon: "🥇" }
 };
 
 function BrandMark() {
@@ -107,16 +98,21 @@ export default function App() {
   const queryClient = useQueryClient();
   const [wallet, setWallet] = useState(emptyWallet);
   const [txState, setTxState] = useState(emptyTx);
-  const [page, setPage] = useState("dashboard"); // "dashboard", "log", "profile", "badges", "history"
-  const [profileForm, setProfileForm] = useState({
-    displayName: "",
-    weeklyGoalMinutes: "240"
+  const [page, setPage] = useState("dashboard"); // "dashboard", "create", "provider", "client", "arbitration", "history"
+
+  // Create Project Form State
+  const [newProjectForm, setNewProjectForm] = useState({
+    provider: "",
+    title: "",
+    budget: "100",
+    milestones: [
+      { title: "Design Phase", amount: "40" },
+      { title: "Development Phase", amount: "60" }
+    ]
   });
-  const [goalForm, setGoalForm] = useState("300");
-  const [sessionForm, setSessionForm] = useState({
-    topic: "",
-    minutesSpent: "45"
-  });
+
+  // Proof Submission State
+  const [proofForms, setProofForms] = useState({});
 
   useEffect(() => {
     let isMounted = true;
@@ -125,9 +121,7 @@ export default function App() {
     async function syncWallet() {
       try {
         const nextState = await discoverWalletState();
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         setWallet((current) => ({
           ...current,
@@ -136,9 +130,7 @@ export default function App() {
           error: ""
         }));
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         setWallet((current) => ({
           ...current,
@@ -169,12 +161,12 @@ export default function App() {
   const contractReady = hasContractConfig();
   const readyForReads = Boolean(wallet.account) && contractReady && !wrongNetwork;
 
-
+  // Queries
   const globalStatsQuery = useQuery({
     queryKey: ["global-stats", configuredContractId],
     queryFn: () => readGlobalStats(),
     enabled: contractReady,
-    refetchInterval: 20_000
+    refetchInterval: 15_000
   });
 
   const contractEventsQuery = useQuery({
@@ -184,57 +176,29 @@ export default function App() {
     refetchInterval: 15_000
   });
 
-  const dashboardQuery = useQuery({
-    queryKey: ["dashboard", wallet.account, wallet.networkPassphrase],
-    queryFn: () => readDashboard(wallet.account),
+  const userProjectsQuery = useQuery({
+    queryKey: ["user-projects", wallet.account, wallet.networkPassphrase],
+    queryFn: () => readUserProjects(wallet.account),
     enabled: readyForReads,
-    refetchInterval: 20_000
+    refetchInterval: 15_000
   });
 
-  const sessionsQuery = useQuery({
-    queryKey: ["sessions", wallet.account, wallet.networkPassphrase, dashboardQuery.data?.sessionCount || 0],
-    queryFn: () => readRecentSessions(wallet.account, 5),
-    enabled: readyForReads && Boolean(dashboardQuery.data),
-    refetchInterval: 20_000
-  });
-
-  const badgesQuery = useQuery({
-    queryKey: ["badges", wallet.account, wallet.networkPassphrase, dashboardQuery.data?.totalMinutes || 0],
-    queryFn: () => readBadges(wallet.account),
-    enabled: readyForReads && Boolean(dashboardQuery.data),
-    refetchInterval: 20_000
-  });
-
-  useEffect(() => {
-    if (!dashboardQuery.data) {
-      return;
-    }
-
-    setGoalForm(String(dashboardQuery.data.weeklyGoalMinutes));
-    setProfileForm((current) => ({
-      displayName: current.displayName || dashboardQuery.data.displayName,
-      weeklyGoalMinutes: current.weeklyGoalMinutes || String(dashboardQuery.data.weeklyGoalMinutes)
-    }));
-  }, [dashboardQuery.data]);
-
-  const dashboard = dashboardQuery.data;
+  const projects = useMemo(() => userProjectsQuery.data || [], [userProjectsQuery.data]);
   const globalStats = globalStatsQuery.data;
-  const weeklyProgress = useMemo(() => {
-    if (!dashboard?.weeklyGoalMinutes) {
-      return 0;
-    }
 
-    return Math.min(
-      100,
-      Math.round((dashboard.minutesThisWeek / dashboard.weeklyGoalMinutes) * 100)
-    );
-  }, [dashboard]);
+  // Split projects into client and provider roles
+  const clientProjects = useMemo(() => {
+    return projects.filter((p) => p.client === wallet.account);
+  }, [projects, wallet.account]);
+
+  const providerProjects = useMemo(() => {
+    return projects.filter((p) => p.provider === wallet.account);
+  }, [projects, wallet.account]);
 
   async function runLedgerAction(action, pendingMessage, successMessage) {
     if (!wallet.account) {
       throw new Error("Connect Freighter before sending a transaction.");
     }
-
     if (wrongNetwork) {
       throw new Error(`Switch Freighter to ${getNetworkLabel(configuredNetworkPassphrase)}.`);
     }
@@ -249,9 +213,7 @@ export default function App() {
       const result = await action();
 
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["dashboard", wallet.account] }),
-        queryClient.invalidateQueries({ queryKey: ["sessions", wallet.account] }),
-        queryClient.invalidateQueries({ queryKey: ["badges", wallet.account] }),
+        queryClient.invalidateQueries({ queryKey: ["user-projects", wallet.account] }),
         queryClient.invalidateQueries({ queryKey: ["global-stats", configuredContractId] }),
         queryClient.invalidateQueries({ queryKey: ["contract-events", configuredContractId] })
       ]);
@@ -272,35 +234,58 @@ export default function App() {
     }
   }
 
-  const saveProfileMutation = useMutation({
-    mutationFn: ({ displayName, weeklyGoalMinutes }) =>
+  // Mutations
+  const createProjectMutation = useMutation({
+    mutationFn: ({ provider, title, budget, milestoneTitles, milestoneAmounts }) =>
       runLedgerAction(
-        () => saveProfile(wallet.account, displayName, weeklyGoalMinutes),
-        "Forging your operator profile on Stellar...",
-        "Profile saved on Soroban."
+        () => createProject(wallet.account, provider, title, budget, milestoneTitles, milestoneAmounts),
+        "Deploying milestone project to Stellar...",
+        "Escrow project funded & created successfully."
       )
   });
 
-  const updateGoalMutation = useMutation({
-    mutationFn: ({ weeklyGoalMinutes }) =>
+  const submitProofMutation = useMutation({
+    mutationFn: ({ projectId, milestoneIndex, proofUrl }) =>
       runLedgerAction(
-        () => updateWeeklyGoal(wallet.account, weeklyGoalMinutes),
-        "Updating your weekly forge target...",
-        "Weekly goal updated."
+        () => submitMilestoneProof(wallet.account, projectId, milestoneIndex, proofUrl),
+        "Submitting milestone work proof to the contract...",
+        "Deliverable proof submitted."
       )
   });
 
-  const logSessionMutation = useMutation({
-    mutationFn: ({ topic, minutesSpent }) =>
+  const approveMilestoneMutation = useMutation({
+    mutationFn: ({ projectId, milestoneIndex }) =>
       runLedgerAction(
-        () => logSession(wallet.account, topic, minutesSpent),
-        "Writing your focus block to Stellar...",
-        "Focus session logged."
+        () => approveMilestone(wallet.account, projectId, milestoneIndex),
+        "Authorizing milestone payment release...",
+        "Milestone approved and payout released."
+      )
+  });
+
+  const disputeMilestoneMutation = useMutation({
+    mutationFn: ({ projectId, milestoneIndex }) =>
+      runLedgerAction(
+        () => disputeMilestone(wallet.account, projectId, milestoneIndex),
+        "Escalating milestone to dispute arbitration...",
+        "Dispute raised. Funds locked under arbitration."
+      )
+  });
+
+  const resolveDisputeMutation = useMutation({
+    mutationFn: ({ projectId, milestoneIndex, payout }) =>
+      runLedgerAction(
+        () => resolveDispute(wallet.account, projectId, milestoneIndex, payout),
+        "Submitting resolution decision to arbitration contract...",
+        "Dispute resolved and callback settlement executed."
       )
   });
 
   const anyMutationPending =
-    saveProfileMutation.isPending || updateGoalMutation.isPending || logSessionMutation.isPending;
+    createProjectMutation.isPending ||
+    submitProofMutation.isPending ||
+    approveMilestoneMutation.isPending ||
+    disputeMilestoneMutation.isPending ||
+    resolveDisputeMutation.isPending;
 
   async function handleConnectWallet() {
     setWallet((current) => ({
@@ -325,87 +310,53 @@ export default function App() {
     }
   }
 
-  function handleProfileSubmit(event) {
-    event.preventDefault();
+  // Form Handlers
+  function handleCreateProject(e) {
+    e.preventDefault();
+    const provider = newProjectForm.provider.trim();
+    const title = newProjectForm.title.trim();
+    const budget = Number(newProjectForm.budget);
+    const milestoneTitles = newProjectForm.milestones.map((m) => m.title.trim());
+    const milestoneAmounts = newProjectForm.milestones.map((m) => Number(m.amount));
 
-    const displayName = profileForm.displayName.trim();
-    const weeklyGoalMinutes = Number(profileForm.weeklyGoalMinutes);
-
-    if (!displayName) {
-      setTxState({
-        status: "error",
-        message: "Add a display name before saving your profile.",
-        hash: ""
-      });
+    if (!provider || !title || !budget) {
+      setTxState({ status: "error", message: "All fields are required.", hash: "" });
       return;
     }
 
-    if (Number.isNaN(weeklyGoalMinutes) || weeklyGoalMinutes < 30 || weeklyGoalMinutes > 5000) {
-      setTxState({
-        status: "error",
-        message: "Weekly goal must stay between 30 and 5000 minutes.",
-        hash: ""
-      });
+    const sumAmounts = milestoneAmounts.reduce((a, b) => a + b, 0);
+    if (sumAmounts !== budget) {
+      setTxState({ status: "error", message: `Milestones sum (${sumAmounts}) must match total budget (${budget}).`, hash: "" });
       return;
     }
 
-    saveProfileMutation.mutate({
-      displayName,
-      weeklyGoalMinutes
+    createProjectMutation.mutate({
+      provider,
+      title,
+      budget,
+      milestoneTitles,
+      milestoneAmounts
     });
   }
 
-  function handleGoalSubmit(event) {
-    event.preventDefault();
-
-    const weeklyGoalMinutes = Number(goalForm);
-    if (Number.isNaN(weeklyGoalMinutes) || weeklyGoalMinutes < 30 || weeklyGoalMinutes > 5000) {
-      setTxState({
-        status: "error",
-        message: "Pick a weekly goal between 30 and 5000 minutes.",
-        hash: ""
-      });
-      return;
-    }
-
-    updateGoalMutation.mutate({
-      weeklyGoalMinutes
-    });
+  function handleAddMilestoneInput() {
+    setNewProjectForm((prev) => ({
+      ...prev,
+      milestones: [...prev.milestones, { title: "", amount: "0" }]
+    }));
   }
 
-  function handleSessionSubmit(event) {
-    event.preventDefault();
+  function handleRemoveMilestoneInput(index) {
+    setNewProjectForm((prev) => ({
+      ...prev,
+      milestones: prev.milestones.filter((_, i) => i !== index)
+    }));
+  }
 
-    const topic = sessionForm.topic.trim();
-    const minutesSpent = Number(sessionForm.minutesSpent);
-
-    if (!topic) {
-      setTxState({
-        status: "error",
-        message: "Give this focus block a topic so the chain record stays meaningful.",
-        hash: ""
-      });
-      return;
-    }
-
-    if (Number.isNaN(minutesSpent) || minutesSpent < 5 || minutesSpent > 480) {
-      setTxState({
-        status: "error",
-        message: "Focus sessions must be between 5 and 480 minutes.",
-        hash: ""
-      });
-      return;
-    }
-
-    logSessionMutation.mutate({
-      topic,
-      minutesSpent
-    });
-
-    setSessionForm({
-      topic: "",
-      minutesSpent: sessionForm.minutesSpent
-    });
+  function handleMilestoneInputChange(index, field, value) {
+    const updated = [...newProjectForm.milestones];
+    updated[index][field] = value;
+    setNewProjectForm((prev) => ({ ...prev, milestones: updated }));
   }
 
   const txExplorerLink = getExplorerLink(wallet.networkPassphrase, txState.hash);
@@ -416,31 +367,48 @@ export default function App() {
       ? `Connected to ${getNetworkLabel(wallet.networkPassphrase)}. Switch Freighter to ${getNetworkLabel(configuredNetworkPassphrase)}.`
       : txState.message ||
         (contractReady
-          ? "ForgeMind is ready to log study blocks."
-          : "Deploy the Soroban contract and export config before using the app."));
+          ? "TrustEscrow is ready to secure milestone agreements."
+          : "Deploy the Soroban contracts and export config before using the app."));
+
+  const milestoneStatusLabels = {
+    0: { text: "Pending", class: "status-pending" },
+    1: { text: "Submitted", class: "status-submitted" },
+    2: { text: "Approved", class: "status-approved" },
+    3: { text: "Disputed", class: "status-disputed" },
+    4: { text: "Refunded", class: "status-refunded" }
+  };
+
+  const projectStatusLabels = {
+    0: { text: "Active", class: "proj-active" },
+    1: { text: "Completed", class: "proj-completed" },
+    2: { text: "Disputed", class: "proj-disputed" }
+  };
 
   return (
     <div className="app-container">
       <aside className="sidebar">
         <div className="brand">
           <BrandMark />
-          <h2>ForgeMind</h2>
+          <h2>TrustEscrow</h2>
         </div>
         <nav className="nav-links">
           <button className={`nav-item ${page === "dashboard" ? "active" : ""}`} onClick={() => setPage("dashboard")}>
             📊 Dashboard
           </button>
-          <button className={`nav-item ${page === "log" ? "active" : ""}`} onClick={() => setPage("log")}>
-            ⏱️ Log Focus
+          <button className={`nav-item ${page === "create" ? "active" : ""}`} onClick={() => setPage("create")}>
+            🤝 New Agreement
           </button>
-          <button className={`nav-item ${page === "profile" ? "active" : ""}`} onClick={() => setPage("profile")}>
-            👤 Profile & Target
+          <button className={`nav-item ${page === "provider" ? "active" : ""}`} onClick={() => setPage("provider")}>
+            ⏱️ Provider Hub
           </button>
-          <button className={`nav-item ${page === "badges" ? "active" : ""}`} onClick={() => setPage("badges")}>
-            🏆 Achievements
+          <button className={`nav-item ${page === "client" ? "active" : ""}`} onClick={() => setPage("client")}>
+            👤 Client Hub
+          </button>
+          <button className={`nav-item ${page === "arbitration" ? "active" : ""}`} onClick={() => setPage("arbitration")}>
+            ⚖️ Arbitration Desk
           </button>
           <button className={`nav-item ${page === "history" ? "active" : ""}`} onClick={() => setPage("history")}>
-            📜 Chain History
+            📜 Events Stream
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -479,157 +447,318 @@ export default function App() {
           <div className="page-fade">
             <section className="metrics-grid">
               <MetricCard
-                label="Forge Time"
-                value={dashboard ? formatMinutes(dashboard.totalMinutes) : "0m"}
-                note={dashboard ? `${dashboard.sessionCount} deep blocks` : "No sessions logged"}
-                loading={dashboardQuery.isLoading}
-              />
-              <MetricCard
-                label="Target Status"
-                value={dashboard ? formatMinutes(dashboard.minutesThisWeek) : "0m"}
-                note={dashboard ? `${Math.max(dashboard.weeklyGoalMinutes - dashboard.minutesThisWeek, 0)}m remaining` : "No target set"}
-                loading={dashboardQuery.isLoading}
-              />
-              <MetricCard
-                label="Forge Streak"
-                value={dashboard ? `${dashboard.currentStreak} day${dashboard.currentStreak === 1 ? "" : "s"}` : "0 days"}
-                note={dashboard?.goalReachedThisWeek ? "Weekly target completed" : "Keep forging"}
-                loading={dashboardQuery.isLoading}
-              />
-              <MetricCard
-                label="Global Operators"
-                value={globalStats ? String(globalStats.learnerCount) : "0"}
-                note="Profiles registered"
+                label="Global Projects"
+                value={globalStats ? String(globalStats.projectCount) : "0"}
+                note="Agreements Created"
                 loading={globalStatsQuery.isLoading}
+              />
+              <MetricCard
+                label="Total Funded"
+                value={globalStats ? `$${globalStats.totalBudget}` : "$0"}
+                note="Locked volume history"
+                loading={globalStatsQuery.isLoading}
+              />
+              <MetricCard
+                label="Active Escrow"
+                value={globalStats ? `$${globalStats.active_escrow || globalStats.activeEscrow}` : "$0"}
+                note="Currently secured funds"
+                loading={globalStatsQuery.isLoading}
+              />
+              <MetricCard
+                label="My Active Roles"
+                value={projects.length ? String(projects.length) : "0"}
+                note={`${clientProjects.length} client / ${providerProjects.length} provider`}
+                loading={userProjectsQuery.isLoading}
               />
             </section>
 
-            <div className="dashboard-summary-panel" style={{ marginTop: '1.5rem' }}>
-              <Panel eyebrow="Overview" title="ForgeMind Performance Dashboard" tone="mint">
+            <div style={{ marginTop: '1.5rem' }}>
+              <Panel eyebrow="Overview" title="Decentralized Trust Platform" tone="mint">
                 <p className="lead" style={{ color: '#64748b', fontSize: '1rem', marginTop: 0 }}>
-                  Track your deep study effort, forge consecutive-day study streaks, and unlock cryptographic milestone badges on the Stellar blockchain.
+                  Deploy secure milestone-locked client escrow accounts, submit verified deliverables, and handle arbitration resolutions transparently on the Stellar network.
                 </p>
-                <div className="progress-shell" style={{ marginTop: '2rem' }}>
-                  <div className="progress-labels">
-                    <span>Weekly Target Progress</span>
-                    <span>{dashboard ? `${weeklyProgress}%` : "0%"}</span>
+              </Panel>
+            </div>
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <Panel eyebrow="Agreements" title="Active Agreements Overview" tone="ink">
+                {userProjectsQuery.isLoading ? (
+                  <ActivitySkeleton />
+                ) : projects.length ? (
+                  <div className="session-list">
+                    {projects.map((p) => (
+                      <article className="session-card" key={p.id}>
+                        <div>
+                          <span className={`network-pill ${projectStatusLabels[p.status]?.class || "status-pending"}`} style={{ marginRight: '8px' }}>
+                            {projectStatusLabels[p.status]?.text || "Unknown"}
+                          </span>
+                          <h3 style={{ display: 'inline-block' }}>{p.title}</h3>
+                          <p style={{ marginTop: '4px' }}>
+                            Client: <span style={{ fontFamily: 'monospace' }}>{shortAddress(p.client)}</span> | Provider: <span style={{ fontFamily: 'monospace' }}>{shortAddress(p.provider)}</span>
+                          </p>
+                        </div>
+                        <div className="session-meta">
+                          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>${p.budget} USD</span>
+                          <span>{p.milestoneCount} milestones</span>
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                  <div className="progress-track">
-                    <span className="progress-fill" style={{ width: `${weeklyProgress}%` }} />
-                  </div>
-                </div>
+                ) : (
+                  <p className="empty-state">No agreements associated with this wallet. Go to "New Agreement" to launch one.</p>
+                )}
               </Panel>
             </div>
           </div>
         )}
 
-        {page === "log" && (
+        {page === "create" && (
           <div className="page-fade">
-            <Panel eyebrow="Action" title="Forge Focus Block" tone="ink">
-              <form className="form-grid" onSubmit={handleSessionSubmit}>
+            <Panel eyebrow="Escrow" title="Fund Milestone Agreement" tone="ink">
+              <form className="form-grid" onSubmit={handleCreateProject}>
                 <label>
-                  <span>Focus topic</span>
-                  <input type="text" maxLength="48" required placeholder="Systems design review" value={sessionForm.topic} onChange={(e) => setSessionForm(curr => ({ ...curr, topic: e.target.value }))} />
+                  <span>Project Title</span>
+                  <input type="text" required placeholder="Build Soroban Smart Escrow Dashboard" value={newProjectForm.title} onChange={(e) => setNewProjectForm(curr => ({ ...curr, title: e.target.value }))} />
                 </label>
                 <label>
-                  <span>Minutes invested</span>
-                  <input type="number" min="5" max="480" step="5" required value={sessionForm.minutesSpent} onChange={(e) => setSessionForm(curr => ({ ...curr, minutesSpent: e.target.value }))} />
+                  <span>Service Provider (Freelancer Wallet Address)</span>
+                  <input type="text" required placeholder="G..." value={newProjectForm.provider} onChange={(e) => setNewProjectForm(curr => ({ ...curr, provider: e.target.value }))} />
                 </label>
-                <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}>
-                  {logSessionMutation.isPending ? "Logging..." : "Log focus session"}
+                <label>
+                  <span>Total Escrow Budget (USD Credits)</span>
+                  <input type="number" required placeholder="500" value={newProjectForm.budget} onChange={(e) => setNewProjectForm(curr => ({ ...curr, budget: e.target.value }))} />
+                </label>
+
+                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3>Milestones Breakdown</h3>
+                    <button className="button button-header" type="button" onClick={handleAddMilestoneInput}>+ Add Milestone</button>
+                  </div>
+
+                  {newProjectForm.milestones.map((milestone, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Deliverable Name"
+                        value={milestone.title}
+                        onChange={(e) => handleMilestoneInputChange(idx, "title", e.target.value)}
+                        style={{ flex: 2 }}
+                      />
+                      <input
+                        type="number"
+                        required
+                        placeholder="Amount"
+                        value={milestone.amount}
+                        onChange={(e) => handleMilestoneInputChange(idx, "amount", e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      {newProjectForm.milestones.length > 1 && (
+                        <button
+                          className="button button-header"
+                          type="button"
+                          onClick={() => handleRemoveMilestoneInput(idx)}
+                          style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#f87171' }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !contractReady}>
+                  {createProjectMutation.isPending ? "Locking & Deploying..." : "Deploy & Lock Escrow Funds"}
                 </button>
               </form>
             </Panel>
           </div>
         )}
 
-        {page === "profile" && (
+        {page === "provider" && (
           <div className="page-fade">
-            <div className="profile-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-              <Panel eyebrow="Setup" title="Operator Settings" tone="ember">
-                <form className="form-grid" onSubmit={handleProfileSubmit}>
-                  <label>
-                    <span>Display name</span>
-                    <input type="text" maxLength="32" required placeholder="Signal Architect" value={profileForm.displayName} onChange={(e) => setProfileForm(curr => ({ ...curr, displayName: e.target.value }))} />
-                  </label>
-                  <label>
-                    <span>Weekly goal (minutes)</span>
-                    <input type="number" min="30" max="5000" step="5" required value={profileForm.weeklyGoalMinutes} onChange={(e) => setProfileForm(curr => ({ ...curr, weeklyGoalMinutes: e.target.value }))} />
-                  </label>
-                  <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !contractReady}>
-                    {saveProfileMutation.isPending ? "Saving..." : "Save profile"}
-                  </button>
-                </form>
-              </Panel>
+            <Panel eyebrow="Freelancer" title="Provider Deliverables Desk" tone="ink">
+              {userProjectsQuery.isLoading ? (
+                <ActivitySkeleton />
+              ) : providerProjects.length ? (
+                <div style={{ display: 'grid', gap: '2rem' }}>
+                  {providerProjects.map((p) => (
+                    <div key={p.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3>{p.title} (Project #{p.id})</h3>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Total Budget: ${p.budget}</span>
+                      </div>
+                      <div className="session-list">
+                        {p.milestones.map((m, idx) => (
+                          <div className="session-card" key={idx} style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                            <div>
+                              <h4 style={{ margin: '0 0 4px 0' }}>{m.title}</h4>
+                              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                                Amount: <strong style={{ color: 'var(--text-primary)' }}>${m.amount}</strong>
+                              </p>
+                              {m.proofUrl && (
+                                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', fontFamily: 'monospace' }}>
+                                  Proof: <a href={m.proofUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--text-primary)' }}>{m.proofUrl}</a>
+                                </p>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <span className={`network-pill ${milestoneStatusLabels[m.status]?.class || "status-pending"}`}>
+                                {milestoneStatusLabels[m.status]?.text || "Pending"}
+                              </span>
 
-              <Panel eyebrow="Target" title="Retune target goal" tone="mint">
-                <form className="form-grid" onSubmit={handleGoalSubmit}>
-                  <label>
-                    <span>New weekly goal</span>
-                    <input type="number" min="30" max="5000" step="5" required value={goalForm} onChange={(e) => setGoalForm(e.target.value)} />
-                  </label>
-                  <button className="button button-secondary" type="submit" disabled={anyMutationPending || !wallet.account || !dashboard || !contractReady}>
-                    {updateGoalMutation.isPending ? "Updating..." : "Update goal"}
-                  </button>
-                </form>
-              </Panel>
-            </div>
+                              {m.status === 0 && (
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    const proof = proofForms[`${p.id}-${idx}`] || "";
+                                    if (!proof) return;
+                                    submitProofMutation.mutate({ projectId: p.id, milestoneIndex: idx, proofUrl: proof });
+                                  }}
+                                  style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+                                >
+                                  <input
+                                    type="text"
+                                    placeholder="GitHub URL / Proof URL"
+                                    required
+                                    value={proofForms[`${p.id}-${idx}`] || ""}
+                                    onChange={(e) => setProofForms(prev => ({ ...prev, [`${p.id}-${idx}`]: e.target.value }))}
+                                    style={{ width: '180px', padding: '0.5rem' }}
+                                  />
+                                  <button className="button button-header" type="submit" disabled={anyMutationPending}>
+                                    Submit
+                                  </button>
+                                </form>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">No projects found where you are the Service Provider.</p>
+              )}
+            </Panel>
           </div>
         )}
 
-        {page === "badges" && (
+        {page === "client" && (
           <div className="page-fade">
-            <Panel eyebrow="Achievements" title="Cryptographic Milestone Badges" tone="mint">
-              {badgesQuery.isLoading ? (
+            <Panel eyebrow="Client" title="Client Escrow Approvals Desk" tone="ink">
+              {userProjectsQuery.isLoading ? (
                 <ActivitySkeleton />
-              ) : badgesQuery.data?.length ? (
-                <div className="badge-grid">
-                  {badgesQuery.data.map((badgeId) => {
-                    const def = badgeDefinitions[badgeId] || { name: `Badge #${badgeId}`, desc: "Milestone unlocked", icon: "🏆" };
-                    return (
-                      <article className="badge-card" key={badgeId}>
-                        <span className="badge-icon-wrapper">{def.icon}</span>
-                        <h3>{def.name}</h3>
-                        <p>{def.desc}</p>
-                      </article>
-                    );
-                  })}
+              ) : clientProjects.length ? (
+                <div style={{ display: 'grid', gap: '2rem' }}>
+                  {clientProjects.map((p) => (
+                    <div key={p.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3>{p.title} (Project #{p.id})</h3>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Budget Secured: ${p.budget}</span>
+                      </div>
+                      <div className="session-list">
+                        {p.milestones.map((m, idx) => (
+                          <div className="session-card" key={idx} style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                            <div>
+                              <h4 style={{ margin: '0 0 4px 0' }}>{m.title}</h4>
+                              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                                Amount: <strong style={{ color: 'var(--text-primary)' }}>${m.amount}</strong>
+                              </p>
+                              {m.proofUrl && (
+                                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', fontFamily: 'monospace' }}>
+                                  Proof submitted: <a href={m.proofUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--text-primary)' }}>{m.proofUrl}</a>
+                                </p>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span className={`network-pill ${milestoneStatusLabels[m.status]?.class || "status-pending"}`} style={{ marginRight: '8px' }}>
+                                {milestoneStatusLabels[m.status]?.text || "Pending"}
+                              </span>
+
+                              {(m.status === 0 || m.status === 1 || m.status === 3) && (
+                                <>
+                                  <button
+                                    className="button button-header"
+                                    onClick={() => approveMilestoneMutation.mutate({ projectId: p.id, milestoneIndex: idx })}
+                                    disabled={anyMutationPending}
+                                    style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}
+                                  >
+                                    Release
+                                  </button>
+                                  {(m.status === 0 || m.status === 1) && (
+                                    <button
+                                      className="button button-header"
+                                      onClick={() => disputeMilestoneMutation.mutate({ projectId: p.id, milestoneIndex: idx })}
+                                      disabled={anyMutationPending}
+                                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}
+                                    >
+                                      Dispute
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <p className="empty-state">No badges earned yet. Forge focus blocks to unlock achievements on-chain.</p>
+                <p className="empty-state">No projects found where you are the Client.</p>
               )}
+            </Panel>
+          </div>
+        )}
+
+        {page === "arbitration" && (
+          <div className="page-fade">
+            <Panel eyebrow="Resolution" title="Dispute Arbitration Desk" tone="ember">
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                Arbitration desk allows simulated third-party validators or admins to resolve active disputes by triggering the callback resolution sequence via Inter-Contract Communication (ICC).
+              </p>
+
+              <form
+                className="form-grid"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const target = e.target;
+                  const projectId = Number(target.projectId.value);
+                  const milestoneIndex = Number(target.milestoneIndex.value);
+                  const payout = target.payout.value === "provider";
+                  resolveDisputeMutation.mutate({ projectId, milestoneIndex, payout });
+                }}
+              >
+                <label>
+                  <span>Project ID</span>
+                  <input type="number" name="projectId" required placeholder="0" />
+                </label>
+                <label>
+                  <span>Milestone Index</span>
+                  <input type="number" name="milestoneIndex" required placeholder="0" />
+                </label>
+                <label>
+                  <span>Arbitration Settlement Action</span>
+                  <select name="payout" style={{ width: '100%', padding: '0.9rem 1.1rem', borderRadius: '16px', border: '1px solid var(--border)', background: 'rgba(15, 23, 42, 0.6)' }}>
+                    <option value="provider">Payout Escrow Funds to Freelancer (Provider)</option>
+                    <option value="client">Refund Escrow Funds to Client</option>
+                  </select>
+                </label>
+
+                <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !contractReady}>
+                  {resolveDisputeMutation.isPending ? "Executing Resolution..." : "Execute Arbitration Payout"}
+                </button>
+              </form>
             </Panel>
           </div>
         )}
 
         {page === "history" && (
           <div className="page-fade">
-            <div className="history-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1.5rem' }}>
-              <Panel eyebrow="Ledger" title="Recent Sessions" tone="ink">
-                {sessionsQuery.isLoading ? (
-                  <ActivitySkeleton />
-                ) : sessionsQuery.data?.length ? (
-                  <div className="session-list">
-                    {sessionsQuery.data.map((session) => (
-                      <article className="session-card" key={session.id}>
-                        <div>
-                          <h3>{session.topic}</h3>
-                          <p>{formatDate(session.timestamp)}</p>
-                        </div>
-                        <div className="session-meta">
-                          <span>{formatMinutes(session.minutesSpent)}</span>
-                          <span>Streak {session.streakAfterLog}</span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="empty-state">No focus blocks recorded on-chain yet.</p>
-                )}
-              </Panel>
-
-              <Panel eyebrow="RPC" title="Contract Events" tone="ember">
-                <div className="panel-toolbar" style={{ marginBottom: '1rem' }}>
+            <div className="history-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+              <Panel eyebrow="RPC" title="Escrow Contract Event Stream" tone="ink">
+                <div className="panel-toolbar" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
                   <ActivityTicker active={contractEventsQuery.isFetching} />
                 </div>
                 {contractEventsQuery.isLoading ? (
@@ -639,15 +768,17 @@ export default function App() {
                     {contractEventsQuery.data.map((event) => (
                       <article className="event-card" key={event.id}>
                         <div>
-                          <p className="event-kicker">{event.summary}</p>
-                          <h3>{event.topics.join(" / ")}</h3>
-                          <p>{formatDateTime(event.closedAt)}</p>
+                          <p className="event-kicker">{event.topics.join(" / ")}</p>
+                          <h3>{event.summary}</h3>
+                          <p style={{ fontFamily: 'monospace', fontSize: '0.82rem', marginTop: '4px' }}>
+                            Transaction: <a href={getExplorerLink(wallet.networkPassphrase, event.txHash)} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>{shortAddress(event.txHash)}</a>
+                          </p>
                         </div>
                       </article>
                     ))}
                   </div>
                 ) : (
-                  <p className="empty-state">No recent contract events detected.</p>
+                  <p className="empty-state">No recent escrow contract events detected.</p>
                 )}
               </Panel>
             </div>
