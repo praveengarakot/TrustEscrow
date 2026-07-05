@@ -1,113 +1,101 @@
-# ForgeMind
+# TrustEscrow
 
-[![CI](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml)
+[![CI](https://github.com/barish245/ForgeMind/actions/workflows/ci.yml/badge.svg)](https://github.com/barish245/ForgeMind/actions/workflows/ci.yml)
 
-ForgeMind is a Stellar Soroban Level 4 submission for tracking deep-work sessions on-chain. Operators connect Freighter, create a public profile, set a weekly target, log verified sessions, and monitor both personal progress and contract-wide activity from a responsive production frontend.
+TrustEscrow is a Stellar Soroban milestone-based escrow and decentralized dispute arbitration platform. Freelancers and clients lock up deliverable payments securely in escrow accounts, submit verified milestones proofs, and resolve disputes transparently through a secondary arbitration contract via Inter-Contract Communication (ICC).
+
+### 🔴 The Problem
+In the Web2 gig economy, freelancers and remote workers face significant financial friction:
+- **Payment Default & Delay**: Freelancers frequently experience clients who default on payments, delay payouts, or refuse to pay after the work is delivered.
+- **High Intermediary Fees**: Established platforms like Upwork or Fiverr charge exorbitant fees (10% to 20%), cutting deep into freelancer profits.
+- **Counterparty Risk**: Clients are hesitant to pay upfront due to quality concerns, while freelancers are reluctant to start work without financial assurance.
+
+### 🟢 The Solution
+TrustEscrow solves these issues by establishing a trustless, milestone-based escrow system utilizing Stellar's ultra-low transaction costs and Soroban's smart contracts:
+- **Secure Milestone Locking**: Clients fund the agreement budget directly into the smart contract's escrow vault, guaranteeing the freelancer that funds are secured.
+- **Permissionless Payments**: Payouts are organized in stages (milestones) and released immediately upon client approval.
+- **Decentralized Dispute Resolution**: If work is disputed, funds are locked under arbitration. A secondary Resolution contract settles the dispute and executes settlement payouts back to the main contract using Inter-Contract Communication (ICC).
+- **Fractional Costs**: Transactions cost fractions of a cent, allowing freelancers to keep 99.9% of their earnings.
+
 
 ## Live Submission Links
 
-- Public repository: [GitHub Repository](https://github.com/barish245/focusforge-ledger)
-- Live demo: [focusforge-ledger-ten.vercel.app](https://focusforge-ledger-ten.vercel.app)
-- Vercel production deployment: [Vercel Deployment](https://focusforge-ledger-ten.vercel.app)
-- MVP video: [Google Drive Link](https://drive.google.com/file/d/1xyK2LiGWx28mTAtYsqhwQx4VmmjJMb_0/view?usp=sharing)
+- Public repository: [GitHub Repository](https://github.com/barish245/ForgeMind)
+- Live demo: [trust-escrow-stellar.vercel.app](https://trust-escrow-stellar.vercel.app/)
+- Vercel production deployment: [Vercel Deployment](https://trust-escrow-stellar.vercel.app/)
+- MVP video: [Google Drive Link](https://drive.google.com/file/d/1iRB13e5epj26x_lZseANvQrTQveuI1LT/view?usp=sharing)
 
 ## Screenshots
 
 ### Desktop UI
 
-![ForgeMind desktop UI](./SUBMISSION%20ASSETS/UI.png)
+![TrustEscrow desktop UI](./SUBMISSION%20ASSETS/UI.png)
 
 ### Mobile UI
 
-![ForgeMind mobile UI](./SUBMISSION%20ASSETS/mobui.png)
+![TrustEscrow mobile UI](./SUBMISSION%20ASSETS/mobui.png)
 
 ### CI/CD
 
-![ForgeMind CI/CD](./SUBMISSION%20ASSETS/cicd.png)
+![TrustEscrow CI/CD](./SUBMISSION%20ASSETS/cicd.png)
 
 ## Project Overview
 
-ForgeMind helps a learner or builder prove focused work on-chain. Each wallet can:
+TrustEscrow secures freelancing gig payments on-chain. Each wallet can:
 
-- Create or update a profile with a public display name
-- Set a weekly goal in minutes
-- Log deep-work sessions on Soroban
-- Track total minutes, minutes this week, session count, and streak momentum
-- Inspect network-wide stats for the whole contract
-- Watch recent contract activity pulled from Soroban RPC
+- **New Agreement**: Clients define provider wallets, titles, total budgets, and create custom milestone breakdowns with locking funds.
+- **Provider Hub**: Freelancers inspect project requirements, trace deliverables status, and submit proof URLs to lock in milestones for review.
+- **Client Hub**: Clients review submitted deliverables, release milestone payouts, or raise disputes to lock funds under arbitration.
+- **Arbitration Desk**: Community validators or designated admins vote and settle disputed milestones to execute callback payouts via ICC.
+- **RPC Event Streaming**: Real-time polling for project creation, proof submissions, approvals, and dispute actions directly from Soroban RPC.
 
 ## Architecture
 
-### Smart contract
+### Smart Contracts
 
-Location: [`contracts/focus_forge/src/lib.rs`](./contracts/focus_forge/src/lib.rs)
-
-Contract methods:
-
-- `save_profile(learner, display_name, weekly_goal_minutes)`
-- `update_weekly_goal(learner, new_goal_minutes)`
-- `log_session(learner, topic, minutes_spent)`
-- `get_dashboard(learner)`
+#### Main Escrow Contract: `contracts/focus_forge`
+Handles agreements setup, escrow deposits, deliverable logging, and releases.
+Methods:
+- `create_project(client, provider, title, budget, milestone_titles, milestone_amounts)`
+- `submit_milestone_proof(provider, project_id, milestone_index, proof_url)`
+- `approve_milestone(client, project_id, milestone_index)`
+- `dispute_milestone(caller, project_id, milestone_index)`
+- `execute_resolution(project_id, milestone_index, payout_to_provider)` (called via ICC from the arbitration contract)
+- `get_project(project_id)`
+- `get_milestone(project_id, milestone_index)`
+- `get_user_projects(user)`
 - `get_global_stats()`
-- `get_session_count(learner)`
-- `get_session(learner, index)`
-- `has_profile(learner)`
 
-Stored contract data:
-
-- Per-wallet learner profile
-- Per-wallet session history
-- Weekly progress counters
-- Consecutive-day streak data
-- Global contract stats across all learners and sessions
-
-Validation rules:
-
-- Display name: `3-32` characters
-- Topic: `3-48` characters
-- Session length: `5-480` minutes
-- Weekly goal: `30-5000` minutes
+#### Arbitration Contract: `contracts/focus_forge_rewards`
+Manages dispute escalation records and executes settlements.
+Methods:
+- `escalate_dispute(caller, project_id, milestone_index, client, provider, amount)` (called via ICC from main contract)
+- `resolve_dispute(resolver, project_id, milestone_index, payout_to_provider)`
+- `get_dispute(project_id, milestone_index)`
 
 ### Frontend
 
 Location: [`frontend/src`](./frontend/src)
-
-Frontend stack:
-
-- React + Vite
-- TanStack Query
-- Freighter wallet integration
-- Soroban RPC reads and writes through `@stellar/stellar-sdk`
-
-Frontend production upgrades in this Level 4 pass:
-
-- live contract-wide stats panel
-- recent contract event polling from Soroban RPC
-- deterministic contract config export for cleaner builds
-- real ESLint setup
-- better mobile layout handling
-- clearer contract and RPC visibility for operators
+- React + Vite + TanStack Query + Freighter Wallet.
+- Responsive, swipeable dark monochromatic UI built with pure vanilla CSS.
 
 ## Contract Deployment
 
 - Network: `Stellar Testnet`
-- Ledger Contract ID: [CC3HYOJYCACHERMGLTXQZ433GUEFBQGZBKCFCFK7TODUQWG6VYVRXZHE](https://lab.stellar.org/r/testnet/contract/CC3HYOJYCACHERMGLTXQZ433GUEFBQGZBKCFCFK7TODUQWG6VYVRXZHE)
-- Rewards Contract ID: [CDCO54FPIDLEPEM7QEM27I5G5W3TS6S3AWPF367ZU25CSBCX3SDUPUCA](https://lab.stellar.org/r/testnet/contract/CDCO54FPIDLEPEM7QEM27I5G5W3TS6S3AWPF367ZU25CSBCX3SDUPUCA)
+- Escrow Contract ID: [CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB](https://lab.stellar.org/r/testnet/contract/CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB)
+- Arbitration Contract ID: [CBPTXWCNCRZC53SV2J2DC5EZKF4VMGSBMVAIQTPRGR57QQPQ553T6W3X](https://lab.stellar.org/r/testnet/contract/CBPTXWCNCRZC53SV2J2DC5EZKF4VMGSBMVAIQTPRGR57QQPQ553T6W3X)
 - Deployment record: [deployments/testnet.json](./deployments/testnet.json)
 
 Deployment transactions:
-
-- Soroban Rewards Deploy TX: [94db394d4ff488e44c27faea513e8062fa3534678b759167857524d23e2e1110](https://stellar.expert/explorer/testnet/tx/94db394d4ff488e44c27faea513e8062fa3534678b759167857524d23e2e1110)
-- Soroban Ledger Deploy TX: [1b962926b8baee8160786b0538ae043b2f9c0b842796320f772f8633d6f6bab9](https://stellar.expert/explorer/testnet/tx/1b962926b8baee8160786b0538ae043b2f9c0b842796320f772f8633d6f6bab9)
-- Rewards Initialize TX: [f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8](https://stellar.expert/explorer/testnet/tx/f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8)
-- Ledger Initialize TX: [de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8](https://stellar.expert/explorer/testnet/tx/de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8)
+- Soroban Arbitration Deploy TX: [4f2c1ce347f2f501bd4867d64767ae0b0e7a974cf977c7161c95001a08cdca64](https://stellar.expert/explorer/testnet/tx/4f2c1ce347f2f501bd4867d64767ae0b0e7a974cf977c7161c95001a08cdca64)
+- Soroban Escrow Deploy TX: [4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35](https://stellar.expert/explorer/testnet/tx/4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35)
+- Arbitration Initialize TX: [5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2](https://stellar.expert/explorer/testnet/tx/5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2)
+- Escrow Initialize TX: [4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a](https://stellar.expert/explorer/testnet/tx/4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a)
 
 ## CI/CD
 
 GitHub Actions workflow: [`ci.yml`](./.github/workflows/ci.yml)
-
 The pipeline runs:
-
 - `npm ci`
 - `cargo fmt --all --check`
 - `cargo test`
@@ -115,60 +103,36 @@ The pipeline runs:
 - `npm run lint`
 - `npm run build:frontend`
 
-CI badge:
-
-[![CI](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml/badge.svg)](https://github.com/barish245/focusforge-ledger/actions/workflows/ci.yml)
-
 ## Local Setup
 
 ### 1. Install dependencies
-
 ```powershell
 npm install
 ```
 
 ### 2. Run contract validation
-
 ```powershell
 npm run contract:check
 ```
 
 ### 3. Build the frontend bundle
-
 ```powershell
 npm run build:frontend
 ```
 
 ### 4. Start the app locally
-
 ```powershell
 npm run dev
-```
-
-### 5. Optional environment file
-
-Copy `.env.example` to `.env` if you want to override defaults:
-
-```env
-STELLAR_ACCOUNT=alice
-STELLAR_NETWORK=testnet
-STELLAR_CONTRACT_ALIAS=focus_forge
-VITE_STELLAR_RPC_URL=https://soroban-testnet.stellar.org
-VITE_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
-VITE_CONTRACT_ID=CC3HYOJYCACHERMGLTXQZ433GUEFBQGZBKCFCFK7TODUQWG6VYVRXZHE
-VITE_REWARDS_CONTRACT_ID=CDCO54FPIDLEPEM7QEM27I5G5W3TS6S3AWPF367ZU25CSBCX3SDUPUCA
 ```
 
 ## Build, Test, and Deploy Commands
 
 ### Contract build
-
 ```powershell
 npm run contract:build
 ```
 
 ### Contract deploy
-
 ```powershell
 $env:STELLAR_ACCOUNT='alice'
 $env:STELLAR_NETWORK='testnet'
@@ -177,19 +141,16 @@ npm run contract:deploy
 ```
 
 ### Export frontend config from the deployment record
-
 ```powershell
 npm run export:frontend
 ```
 
 ### Frontend production build
-
 ```powershell
 npm run build:frontend
 ```
 
 ### Vercel production deploy
-
 ```powershell
 npx --yes --package vercel vercel deploy --prod --yes --logs
 ```
@@ -197,30 +158,23 @@ npx --yes --package vercel vercel deploy --prod --yes --logs
 ## Verification Steps
 
 ### Contract verification
-
 ```powershell
-stellar contract invoke --id CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ --source-account alice --network testnet -- get_global_stats
-stellar contract invoke --id CAZBNW7LNKRGNYZVDUB4DCWSZHEFBICEJEFBY4XURGCHVNLOPLQPWEDZ --source-account alice --network testnet -- get_dashboard --learner GAOIB7NPO2XP5AM3OXTQL3FR5WA444UPISMYZ2VZGOSGNGICSBWWO3MM
+stellar contract invoke --id CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB --source-account alice --network testnet -- get_global_stats
 ```
 
 ### Frontend verification
-
 1. Open the live demo.
-2. Confirm the contract snapshot shows the current testnet contract ID.
-3. Connect Freighter on Stellar Testnet.
-4. Save a profile or log a session.
-5. Confirm the transaction link opens in Stellar Expert.
-6. Confirm the recent contract activity panel refreshes with new events.
+2. Connect Freighter on Stellar Testnet.
+3. Lock funds and setup a new milestone agreement.
+4. From the Provider/Client dashboard, submit proofs, release milestones, or trigger disputes.
+5. Track events streaming live from the contract.
 
 ## Inter-contract Calls and Token/Pool Notes
 
-- Inter-contract calls: `Fully implemented. Study sessions logged dynamically trigger badge awards on the rewards contract via ICC.`
-- Transaction hashes for inter-contract calls: [de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8](https://stellar.expert/explorer/testnet/tx/de571228c5f7a1bd35b34c14c225b0c5f63b7574d365580203409a54bcb927a8) (Ledger initialize with rewards contract) and [f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8](https://stellar.expert/explorer/testnet/tx/f11d4df173e396f14dc2bea42032b5c36731d3481479fc9da5acd6b0686832e8) (Rewards initialize with ledger address)
-- Custom token deployed: `No`
+- Inter-contract calls: `Fully implemented. Disputed milestones trigger automatic dispute escalation on the arbitration contract, and settling disputes calls the main escrow contract back via ICC callback.`
+- Custom token deployed: `No (using virtual USD credit reserves for instant usability)`
 - Liquidity pool deployed: `No`
 - Token or pool address: `Not applicable`
-
-This submission is reinforced with dynamic inter-contract communication (ICC) and milestone achievements to provide high architecture complexity.
 
 ## Submission Checklist
 
@@ -234,4 +188,4 @@ This submission is reinforced with dynamic inter-contract communication (ICC) an
 - Inter-contract call note included: `Yes`
 - Token/pool note included: `Yes`
 - Live frontend deployed: `Yes`
-- Minimum 10+ meaningful commits: `Yes (22 commits on main branch)`
+- Minimum 10+ meaningful commits: `Yes`
