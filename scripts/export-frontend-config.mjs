@@ -19,19 +19,13 @@ function getPreferredDeployment() {
 }
 
 const deployment = getPreferredDeployment();
-const fileContents = `export const focusForgeConfig = ${JSON.stringify(
+const fileContents = `export const trustEscrowConfig = ${JSON.stringify(
   {
-    contractName: "FocusForge",
+    contractName: "TrustEscrow",
     fallbackContractId: deployment?.contractId || "",
     fallbackRewardsContractId: deployment?.rewardsContractId || "",
     fallbackNetwork: deployment?.network || "testnet",
-    generatedAt: deployment?.deployedAt || "",
-    limits: {
-      minSessionMinutes: 5,
-      maxSessionMinutes: 480,
-      minGoalMinutes: 30,
-      maxGoalMinutes: 5000
-    }
+    generatedAt: deployment?.deployedAt || ""
   },
   null,
   2
