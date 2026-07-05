@@ -1,4 +1,4 @@
-# ⚡ TrustEscrow
+# TrustEscrow
 
 <div align="center">
 
@@ -15,27 +15,27 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-1. [Problem Statement](#-problem-statement)
-2. [Why Stellar?](#-why-stellar)
-3. [Live Deployment](#-live-deployment)
-4. [Contract Addresses & Transactions](#-contract-addresses--transactions)
-5. [User Onboarding & Feedback](#-user-onboarding--feedback)
-6. [Architecture](#-architecture)
-7. [Smart Contracts](#-smart-contracts)
-8. [Production Hardening (Level 4)](#-production-hardening-level-4)
-9. [Tech Stack](#-tech-stack)
-10. [Project Structure](#-project-structure)
-11. [Testing](#-testing)
-12. [CI/CD Pipeline](#-cicd-pipeline)
-13. [Local Development](#-local-development)
-14. [Roadmap](#-roadmap)
-15. [Author](#-author)
+1. [Problem Statement](#problem-statement)
+2. [Why Stellar?](#why-stellar)
+3. [Live Deployment](#live-deployment)
+4. [Contract Addresses & Transactions](#contract-addresses--transactions)
+5. [User Onboarding & Feedback](#user-onboarding--feedback)
+6. [Architecture](#architecture)
+7. [Smart Contracts](#smart-contracts)
+8. [Production Hardening (Level 4)](#production-hardening-level-4)
+9. [Tech Stack](#tech-stack)
+10. [Project Structure](#project-structure)
+11. [Testing](#testing)
+12. [CI/CD Pipeline](#cicd-pipeline)
+13. [Local Development](#local-development)
+14. [Roadmap](#roadmap)
+15. [Author](#author)
 
 ---
 
-## 🔴 Problem Statement
+## Problem Statement
 
 The global freelance economy is structurally fragmented and carries high payment and trust friction for remote workers and project owners.
 
@@ -50,7 +50,7 @@ The global freelance economy is structurally fragmented and carries high payment
 
 ---
 
-## 🌟 Why Stellar?
+## Why Stellar?
 
 TrustEscrow is designed specifically to utilize the native advantages of the Stellar network:
 
@@ -63,19 +63,19 @@ TrustEscrow is designed specifically to utilize the native advantages of the Ste
 
 ---
 
-## 🌐 Live Deployment
+## Live Deployment
 
 | Resource | Link |
 |----------|------|
-| 🌍 **Live dApp** | [trustescrow-stellar.netlify.app](https://trustescrow-stellar.netlify.app/) |
-| 🎬 **Demo Video** | [Google Drive — Walkthrough Recording](https://drive.google.com/file/d/1dOVVA3A3U-OrmAC22FFON_RBe6q4ycMa/view?usp=sharing) |
-| 💻 **GitHub Repo** | [praveengarakot/TrustEscrow](https://github.com/praveengarakot/TrustEscrow) |
-| 📋 **User Feedback Form** | [TrustEscrow Usability Survey — Google Forms](https://forms.gle/mHik3thtzZtxCfYg9) |
-| 📊 **Onboarded Users & Wallet Interactions** | [Responses Tracker — Google Sheets](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
+| **Live dApp** | [trustescrow-stellar.netlify.app](https://trustescrow-stellar.netlify.app/) |
+| **Demo Video** | [Google Drive — Walkthrough Recording](https://drive.google.com/file/d/1dOVVA3A3U-OrmAC22FFON_RBe6q4ycMa/view?usp=sharing) |
+| **GitHub Repo** | [praveengarakot/TrustEscrow](https://github.com/praveengarakot/TrustEscrow) |
+| **User Feedback Form** | [TrustEscrow Usability Survey — Google Forms](https://forms.gle/mHik3thtzZtxCfYg9) |
+| **Onboarded Users & Wallet Interactions** | [Responses Tracker — Google Sheets](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
 
 ---
 
-## 🔗 Contract Addresses & Transactions
+## Contract Addresses & Transactions
 
 All contracts are deployed and cross-initialized on the **Stellar Testnet** using the `praveen` developer identity.
 
@@ -97,7 +97,7 @@ All contracts are deployed and cross-initialized on the **Stellar Testnet** usin
 
 ---
 
-## 👥 User Onboarding & Feedback
+## User Onboarding & Feedback
 
 As part of the Level 4 production MVP requirements, we onboarded real users to validate the complete milestone escrow lifecycle on the Stellar Testnet.
 
@@ -115,12 +115,12 @@ As part of the Level 4 production MVP requirements, we onboarded real users to v
 
 | Resource | Link |
 |----------|------|
-| 📋 **Feedback Form** | [Submit Feedback](https://forms.gle/mHik3thtzZtxCfYg9) |
-| 📊 **User Responses & Wallet Proof** | [View Spreadsheet](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
+| **Feedback Form** | [Submit Feedback](https://forms.gle/mHik3thtzZtxCfYg9) |
+| **User Responses & Wallet Proof** | [View Spreadsheet](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 TrustEscrow consists of two Soroban smart contracts communicating via Inter-Contract Calls (ICC), and a React frontend that builds and submits signed transactions via Freighter.
 
@@ -163,7 +163,7 @@ Step 4: Arbiter calls resolve_dispute()    → Arbitration contract calls back t
 
 ---
 
-## 📜 Smart Contracts
+## Smart Contracts
 
 ### Escrow Main Contract (`CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB`)
 
@@ -193,7 +193,7 @@ Handles dispute records and resolves payout distributions.
 
 ---
 
-## 🛡️ Production Hardening (Level 4)
+## Production Hardening (Level 4)
 
 We implemented robust validation checks, error-handling schemes, and telemetry integrations for our production-ready Level 4 release:
 
@@ -214,9 +214,9 @@ We implemented robust validation checks, error-handling schemes, and telemetry i
 
 ---
 
-## 📸 Submission Screenshots
+## Submission Screenshots
 
-### 🖥️ Desktop UI
+### Desktop UI
 
 <p align="center">
   <img src="SUBMISSION%20ASSETS/ui2.png" width="800" alt="TrustEscrow Desktop UI Screenshot 1" />
@@ -226,19 +226,19 @@ We implemented robust validation checks, error-handling schemes, and telemetry i
   <img src="SUBMISSION%20ASSETS/ui3.png" width="800" alt="TrustEscrow Desktop UI Screenshot 3" />
 </p>
 
-### 📊 Analytics Desk
+### Analytics Desk
 
 <p align="center">
   <img src="SUBMISSION%20ASSETS/analytics.png" width="800" alt="TrustEscrow Analytics Screenshot" />
 </p>
 
-### 📱 Mobile Responsive UI
+### Mobile Responsive UI
 
 <p align="center">
   <img src="SUBMISSION%20ASSETS/mobui.png" width="375" alt="TrustEscrow Mobile UI Screenshot" />
 </p>
 
-### 🔄 CI/CD Pipeline
+### CI/CD Pipeline
 
 <p align="center">
   <img src="SUBMISSION%20ASSETS/cicd.png" width="800" alt="TrustEscrow CI/CD Pipeline" />
@@ -246,15 +246,15 @@ We implemented robust validation checks, error-handling schemes, and telemetry i
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Test Summary
 
 | Suite | Tests | Status |
 |-------|-------|--------|
-| Frontend (Vitest) | 1 test | ✅ Passing |
-| Escrow Contract (Rust) | 8 tests | ✅ Passing |
-| **Total** | **9 tests** | ✅ **9/9 Passing** |
+| Frontend (Vitest) | 1 test | Passing |
+| Escrow Contract (Rust) | 8 tests | Passing |
+| **Total** | **9 tests** | **9/9 Passing** |
 
 ### Running Tests
 
@@ -268,7 +268,7 @@ cargo test
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
@@ -283,7 +283,7 @@ cargo test
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 TrustEscrow/
@@ -312,7 +312,7 @@ TrustEscrow/
 
 ---
 
-## 🚀 Local Development
+## Local Development
 
 ### Prerequisites
 - Node.js 18+
@@ -335,28 +335,28 @@ npm run dev
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
-### ✅ Level 3 (Complete)
+### Level 3 (Complete)
 - Main Escrow contract with project funding and milestone payouts.
 - Event stream synchronization polling from Soroban RPC.
 - Vitest configuration.
 
-### ✅ Level 4 (Complete)
+### Level 4 (Complete)
 - Secondary Arbitration contract with Inter-Contract Communication (ICC).
 - Complete UI redesign matching `credport` light-editorial theme tokens.
 - Fully featured landing page for disconnected Freighter users.
 - Telemetry integrations: PostHog event logging + Sentry exception tracking.
 - Automated Netlify fallback routes configuration.
 
-### 🔜 Level 5 (Planned)
+### Level 5 (Planned)
 - Reputation Scoring contract tracking client/provider history.
 - Multi-token support linking to custom Stellar Asset Contracts (SAC).
 - Project metrics dashboard and advanced search filters.
 
 ---
 
-## 👨💻 Author
+## Author
 
 **Barsha Saha** — [@barish245](https://github.com/barish245)
 
