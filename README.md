@@ -219,7 +219,11 @@ We implemented robust validation checks, error-handling schemes, and telemetry i
 ### 🖥️ Desktop UI
 
 <p align="center">
-  <img src="SUBMISSION%20ASSETS/ui2.png" width="800" alt="TrustEscrow Desktop UI Screenshot" />
+  <img src="SUBMISSION%20ASSETS/ui2.png" width="800" alt="TrustEscrow Desktop UI Screenshot 1" />
+  <br /><br />
+  <img src="SUBMISSION%20ASSETS/UI.png" width="800" alt="TrustEscrow Desktop UI Screenshot 2" />
+  <br /><br />
+  <img src="SUBMISSION%20ASSETS/ui3.png" width="800" alt="TrustEscrow Desktop UI Screenshot 3" />
 </p>
 
 ### 📊 Analytics Desk
