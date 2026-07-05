@@ -231,7 +231,7 @@ We implemented robust validation checks, error-handling schemes, and telemetry i
 ### 📱 Mobile Responsive UI
 
 <p align="center">
-  <img src="SUBMISSION%20ASSETS/ui4.png" width="375" alt="TrustEscrow Mobile UI Screenshot" />
+  <img src="SUBMISSION%20ASSETS/mobui.png" width="375" alt="TrustEscrow Mobile UI Screenshot" />
 </p>
 
 ### 🔄 CI/CD Pipeline
