@@ -46,6 +46,37 @@ function BrandMark() {
   );
 }
 
+function IconDashboard() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="15" rx="1"/></svg>
+  );
+}
+function IconCreate() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  );
+}
+function IconProvider() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+  );
+}
+function IconClient() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  );
+}
+function IconArbitration() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+  );
+}
+function IconHistory() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+  );
+}
+
 function Panel({ eyebrow, title, body, children, tone = "ember" }) {
   return (
     <section className={`panel panel-${tone}`}>
@@ -393,22 +424,22 @@ export default function App() {
         </div>
         <nav className="nav-links">
           <button className={`nav-item ${page === "dashboard" ? "active" : ""}`} onClick={() => setPage("dashboard")}>
-            📊 Dashboard
+            <IconDashboard /> Dashboard
           </button>
           <button className={`nav-item ${page === "create" ? "active" : ""}`} onClick={() => setPage("create")}>
-            🤝 New Agreement
+            <IconCreate /> New Agreement
           </button>
           <button className={`nav-item ${page === "provider" ? "active" : ""}`} onClick={() => setPage("provider")}>
-            ⏱️ Provider Hub
+            <IconProvider /> Provider Hub
           </button>
           <button className={`nav-item ${page === "client" ? "active" : ""}`} onClick={() => setPage("client")}>
-            👤 Client Hub
+            <IconClient /> Client Hub
           </button>
           <button className={`nav-item ${page === "arbitration" ? "active" : ""}`} onClick={() => setPage("arbitration")}>
-            ⚖️ Arbitration Desk
+            <IconArbitration /> Arbitration Desk
           </button>
           <button className={`nav-item ${page === "history" ? "active" : ""}`} onClick={() => setPage("history")}>
-            📜 Events Stream
+            <IconHistory /> Events Stream
           </button>
         </nav>
         <div className="sidebar-footer">
@@ -785,6 +816,14 @@ export default function App() {
           </div>
         )}
       </main>
+      <a 
+        href="https://forms.gle/4PRxsnXBNGUrtvrB9" 
+        target="_blank" 
+        rel="noreferrer" 
+        className="floating-feedback-btn"
+      >
+        💬 Submit Feedback
+      </a>
     </div>
   );
 }
