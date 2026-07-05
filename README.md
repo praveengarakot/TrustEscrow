@@ -20,20 +20,20 @@ TrustEscrow solves these issues by establishing a trustless, milestone-based esc
 
 ## Live Submission Links
 
-- Public repository: [GitHub Repository](https://github.com/barish245/ForgeMind)
-- Live demo: [trust-escrow-stellar.vercel.app](https://trust-escrow-stellar.vercel.app/)
-- Vercel production deployment: [Vercel Deployment](https://trust-escrow-stellar.vercel.app/)
-- MVP video: [Google Drive Link](https://drive.google.com/file/d/1iRB13e5epj26x_lZseANvQrTQveuI1LT/view?usp=sharing)
+- Public repository: [GitHub Repository](https://github.com/praveengarakot/TrustEscrow)
+- Live demo: [trustescrow.netlify.app](https://trustescrow.netlify.app/)
+- Netlify production deployment: [Netlify Deployment](https://trustescrow.netlify.app/)
+- MVP video: [Google Drive Link](https://drive.google.com/file/d/1dOVVA3A3U-OrmAC22FFON_RBe6q4ycMa/view?usp=sharing)
 
 ## Screenshots
 
 ### Desktop UI
 
-![TrustEscrow desktop UI](./SUBMISSION%20ASSETS/UI.png)
+![TrustEscrow desktop UI](./SUBMISSION%20ASSETS/ui2.png)
 
 ### Mobile UI
 
-![TrustEscrow mobile UI](./SUBMISSION%20ASSETS/mobui.png)
+![TrustEscrow mobile UI](./SUBMISSION%20ASSETS/ui4.png)
 
 ### CI/CD
 

@@ -36,56 +36,32 @@ const emptyTx = {
   hash: ""
 };
 
-function BrandMark() {
+function ArrowRightIcon({ size = 16, className }) {
   return (
-    <div className="brand-mark" aria-hidden="true">
-      <span />
-      <span />
-      <span />
-    </div>
+    <svg viewBox="0 0 20 20" fill="none" width={size} height={size} className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <path d="M4 10h11M11 6l4 4-4 4" />
+    </svg>
   );
 }
 
-function IconDashboard() {
+function CheckIcon({ size = 14, className }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="10" rx="1"/><rect width="7" height="5" x="3" y="15" rx="1"/></svg>
-  );
-}
-function IconCreate() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-  );
-}
-function IconProvider() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-  );
-}
-function IconClient() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-  );
-}
-function IconArbitration() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-  );
-}
-function IconHistory() {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+    <svg viewBox="0 0 16 16" fill="none" width={size} height={size} className={className} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+      <path d="M3.5 8.6l2.9 2.9L12.6 5" />
+    </svg>
   );
 }
 
-function Panel({ eyebrow, title, body, children, tone = "ember" }) {
+function Panel({ eyebrow, title, body, children, n }) {
   return (
-    <section className={`panel panel-${tone}`}>
-      <div className="panel-head">
-        <p className="eyebrow">{eyebrow}</p>
-        <h2>{title}</h2>
-        {body ? <p className="panel-body">{body}</p> : null}
+    <section className="panel">
+      <div className="panel__top">
+        {n && <span className="panel__n">{n}</span>}
+        <p className="eyebrow kicker" style={{ margin: 0 }}>{eyebrow}</p>
+        <h2 className="panel__title">{title}</h2>
       </div>
-      {children}
+      {body ? <p className="panel__desc">{body}</p> : null}
+      <div className="panel__content">{children}</div>
     </section>
   );
 }
@@ -118,9 +94,9 @@ function ActivitySkeleton() {
 
 function ActivityTicker({ active = false }) {
   return (
-    <span className={`ticker ${active ? "ticker-live" : ""}`}>
-      <span />
-      {active ? "Polling live" : "Idle"}
+    <span className={`wchip ${active ? "ticker-live" : ""}`}>
+      <span className="live" style={{ backgroundColor: active ? "var(--ok)" : "var(--ink-3)" }} />
+      {active ? "Polling events..." : "Event stream idle"}
     </span>
   );
 }
@@ -187,8 +163,27 @@ export default function App() {
     };
   }, []);
 
+  // Simple scroll reveal simulation
+  useEffect(() => {
+    const reveals = document.querySelectorAll("[data-reveal]");
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("shown");
+        }
+      });
+    }, { threshold: 0.1 });
+    reveals.forEach((r) => observer.observe(r));
+    return () => observer.disconnect();
+  }, [wallet.account, page]);
+
   const wrongNetwork =
-    Boolean(wallet.networkPassphrase) && wallet.networkPassphrase !== configuredNetworkPassphrase;
+    sidebarNetworkCheck(wallet.networkPassphrase);
+  
+  function sidebarNetworkCheck(passphrase) {
+    return Boolean(passphrase) && passphrase !== configuredNetworkPassphrase;
+  }
+
   const contractReady = hasContractConfig();
   const readyForReads = Boolean(wallet.account) && contractReady && !wrongNetwork;
 
@@ -254,6 +249,8 @@ export default function App() {
         message: successMessage,
         hash: result.hash
       });
+      // Return back to dashboard to view the newly created/updated agreement status
+      setPage("dashboard");
     } catch (error) {
       const message = parseError(error);
       setTxState({
@@ -402,420 +399,515 @@ export default function App() {
           : "Deploy the Soroban contracts and export config before using the app."));
 
   const milestoneStatusLabels = {
-    0: { text: "Pending", class: "status-pending" },
-    1: { text: "Submitted", class: "status-submitted" },
-    2: { text: "Approved", class: "status-approved" },
-    3: { text: "Disputed", class: "status-disputed" },
-    4: { text: "Refunded", class: "status-refunded" }
+    0: { text: "Pending", class: "tag warning" },
+    1: { text: "Submitted", class: "tag ok" },
+    2: { text: "Approved", class: "tag ok" },
+    3: { text: "Disputed", class: "tag alert" },
+    4: { text: "Refunded", class: "tag" }
   };
 
   const projectStatusLabels = {
-    0: { text: "Active", class: "proj-active" },
-    1: { text: "Completed", class: "proj-completed" },
-    2: { text: "Disputed", class: "proj-disputed" }
+    0: { text: "Active", class: "tag ok" },
+    1: { text: "Completed", class: "tag ok" },
+    2: { text: "Disputed", class: "tag alert" }
   };
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div className="brand">
-          <BrandMark />
-          <h2>TrustEscrow</h2>
-        </div>
-        <nav className="nav-links">
-          <button className={`nav-item ${page === "dashboard" ? "active" : ""}`} onClick={() => setPage("dashboard")}>
-            <IconDashboard /> Dashboard
-          </button>
-          <button className={`nav-item ${page === "create" ? "active" : ""}`} onClick={() => setPage("create")}>
-            <IconCreate /> New Agreement
-          </button>
-          <button className={`nav-item ${page === "provider" ? "active" : ""}`} onClick={() => setPage("provider")}>
-            <IconProvider /> Provider Hub
-          </button>
-          <button className={`nav-item ${page === "client" ? "active" : ""}`} onClick={() => setPage("client")}>
-            <IconClient /> Client Hub
-          </button>
-          <button className={`nav-item ${page === "arbitration" ? "active" : ""}`} onClick={() => setPage("arbitration")}>
-            <IconArbitration /> Arbitration Desk
-          </button>
-          <button className={`nav-item ${page === "history" ? "active" : ""}`} onClick={() => setPage("history")}>
-            <IconHistory /> Events Stream
-          </button>
-        </nav>
-        <div className="sidebar-footer">
-          <span className="network-pill">
-            {wallet.networkPassphrase ? getNetworkLabel(wallet.networkPassphrase) : "Freighter offline"}
-          </span>
-        </div>
-      </aside>
+    <>
+      <header className="nav">
+        <div className="nav__in wrap">
+          <a className="brand" href="#top" aria-label="TrustEscrow Home" onClick={(e) => {
+            e.preventDefault();
+            setWallet(emptyWallet);
+            setPage("dashboard");
+          }}>
+            <span className="brand__word">trustescrow</span>
+          </a>
+          
+          {wallet.account && (
+            <nav className="nav__links" aria-label="Primary Workspace Links">
+              <button className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>Dashboard</button>
+              <button className={page === "create" ? "active" : ""} onClick={() => setPage("create")}>New Agreement</button>
+              <button className={page === "provider" ? "active" : ""} onClick={() => setPage("provider")}>Provider Desk</button>
+              <button className={page === "client" ? "active" : ""} onClick={() => setPage("client")}>Client Desk</button>
+              <button className={page === "arbitration" ? "active" : ""} onClick={() => setPage("arbitration")}>Arbitration Desk</button>
+              <button className={page === "history" ? "active" : ""} onClick={() => setPage("history")}>Event Stream</button>
+            </nav>
+          )}
 
-      <main className="main-content">
-        <header className="main-header">
-          <div className="header-status">
-            <span className="live-dot-wrapper">
-              <span className="live-dot" /> Live RPC
-            </span>
-            <span className="wallet-addr">{wallet.account ? shortAddress(wallet.account) : "No wallet connected"}</span>
-          </div>
-          <button className="button button-header" onClick={handleConnectWallet} disabled={wallet.isConnecting}>
-            {wallet.isConnecting ? "Connecting..." : wallet.account ? "Wallet Linked" : "Link Wallet"}
-          </button>
-        </header>
-
-        <section className="status-banner">
           <div>
-            <p className="status-label">Status Info</p>
-            <p className="status-copy">{statusMessage}</p>
+            {wallet.account ? (
+              <span className="wchip" title={wallet.account}>
+                <span className="live" />
+                {shortAddress(wallet.account)} · {wallet.network ? wallet.network : "Stellar"}
+              </span>
+            ) : (
+              <button className="btn btn--primary btn--sm" onClick={handleConnectWallet} disabled={wallet.isConnecting}>
+                {wallet.isConnecting ? <span className="spinner" /> : null}
+                Connect Wallet
+              </button>
+            )}
           </div>
-          {txExplorerLink ? (
-            <a className="status-link" href={txExplorerLink} target="_blank" rel="noreferrer">
-              View transaction
-            </a>
-          ) : null}
-        </section>
+        </div>
+      </header>
 
-        {page === "dashboard" && (
+      {wallet.account && (
+        <nav className="mobile-nav" aria-label="Mobile Workspace Links">
+          <button className={page === "dashboard" ? "active" : ""} onClick={() => setPage("dashboard")}>Dashboard</button>
+          <button className={page === "create" ? "active" : ""} onClick={() => setPage("create")}>Create</button>
+          <button className={page === "provider" ? "active" : ""} onClick={() => setPage("provider")}>Provider</button>
+          <button className={page === "client" ? "active" : ""} onClick={() => setPage("client")}>Client</button>
+          <button className={page === "arbitration" ? "active" : ""} onClick={() => setPage("arbitration")}>Resolve</button>
+          <button className={page === "history" ? "active" : ""} onClick={() => setPage("history")}>Events</button>
+        </nav>
+      )}
+
+      <main className="wrap" style={{ paddingTop: '2.5rem' }}>
+
+        {/* ----------------- LANDING PAGE / MARKETING STATE ----------------- */}
+        {!wallet.account && (
           <div className="page-fade">
-            <section className="metrics-grid">
-              <MetricCard
-                label="Global Projects"
-                value={globalStats ? String(globalStats.projectCount) : "0"}
-                note="Agreements Created"
-                loading={globalStatsQuery.isLoading}
-              />
-              <MetricCard
-                label="Total Funded"
-                value={globalStats ? `$${globalStats.totalBudget}` : "$0"}
-                note="Locked volume history"
-                loading={globalStatsQuery.isLoading}
-              />
-              <MetricCard
-                label="Active Escrow"
-                value={globalStats ? `$${globalStats.active_escrow || globalStats.activeEscrow}` : "$0"}
-                note="Currently secured funds"
-                loading={globalStatsQuery.isLoading}
-              />
-              <MetricCard
-                label="My Active Roles"
-                value={projects.length ? String(projects.length) : "0"}
-                note={`${clientProjects.length} client / ${providerProjects.length} provider`}
-                loading={userProjectsQuery.isLoading}
-              />
+            {/* Hero Section */}
+            <section className="hero" id="top">
+              <div className="hero__grid">
+                <div className="hero__copy" data-reveal>
+                  <h1 className="display hero__title">
+                    Milestone escrow.<br />
+                    Show <span className="em">trustless</span> results.
+                  </h1>
+                  <p className="lede hero__lede">
+                    Deploy secure milestone-locked escrow contracts, submit work proofs, and trigger settlements transparently on Stellar. Payouts release when milestones verify.
+                  </p>
+                  <div className="hero__cta">
+                    <button className="btn btn--primary" onClick={handleConnectWallet}>
+                      Connect Freighter Wallet
+                    </button>
+                  </div>
+                </div>
+
+                <div className="proofcard" data-reveal>
+                  <div className="proofcard__inner">
+                    <div className="pv-row">
+                      <div className="pv-box">
+                        <div className="pv-lbl">client funds</div>
+                        <div className="pv-val">Locked Escrow</div>
+                        <div className="pv-sub">Soroban smart contract</div>
+                      </div>
+                      <div className="pv-mid">
+                        <ArrowRightIcon size={18} className="pv-arrow" />
+                        <span>work verified</span>
+                      </div>
+                      <div className="pv-box">
+                        <div className="pv-lbl">freelancer gets</div>
+                        <div className="pv-val pv-check">
+                          <CheckIcon size={15} /> Payout Released
+                        </div>
+                        <div className="pv-sub">milestone payout executed</div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="proofcard__cap">Arbitrated dispute resolutions are settled on-chain via ICC contracts.</p>
+                </div>
+              </div>
             </section>
 
-            <div style={{ marginTop: '1.5rem' }}>
-              <Panel eyebrow="Overview" title="Decentralized Trust Platform" tone="mint">
-                <p className="lead" style={{ color: '#64748b', fontSize: '1rem', marginTop: 0 }}>
-                  Deploy secure milestone-locked client escrow accounts, submit verified deliverables, and handle arbitration resolutions transparently on the Stellar network.
+            {/* How It Works Section */}
+            <section className="section" id="how" style={{ borderTop: '1px solid var(--line-2)' }}>
+              <div className="section__head center" data-reveal>
+                <p className="kicker">How it works</p>
+                <h2>Three roles, complete escrow flow, zero friction.</h2>
+                <p>
+                  Payments are locked in escrow, verified via deliverable proofs, and disputes are settled directly inside the smart contract without middleman risks.
                 </p>
-              </Panel>
-            </div>
-
-            <div style={{ marginTop: '1.5rem' }}>
-              <Panel eyebrow="Agreements" title="Active Agreements Overview" tone="ink">
-                {userProjectsQuery.isLoading ? (
-                  <ActivitySkeleton />
-                ) : projects.length ? (
-                  <div className="session-list">
-                    {projects.map((p) => (
-                      <article className="session-card" key={p.id}>
-                        <div>
-                          <span className={`network-pill ${projectStatusLabels[p.status]?.class || "status-pending"}`} style={{ marginRight: '8px' }}>
-                            {projectStatusLabels[p.status]?.text || "Unknown"}
-                          </span>
-                          <h3 style={{ display: 'inline-block' }}>{p.title}</h3>
-                          <p style={{ marginTop: '4px' }}>
-                            Client: <span style={{ fontFamily: 'monospace' }}>{shortAddress(p.client)}</span> | Provider: <span style={{ fontFamily: 'monospace' }}>{shortAddress(p.provider)}</span>
-                          </p>
-                        </div>
-                        <div className="session-meta">
-                          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>${p.budget} USD</span>
-                          <span>{p.milestoneCount} milestones</span>
-                        </div>
-                      </article>
-                    ))}
+              </div>
+              <div className="steps3" data-reveal>
+                <div className="stepc">
+                  <div className="stepc__hd">
+                    <span className="stepc__n">01</span>
+                    <span className="stepc__rule" />
                   </div>
-                ) : (
-                  <p className="empty-state">No agreements associated with this wallet. Go to "New Agreement" to launch one.</p>
-                )}
-              </Panel>
-            </div>
+                  <h3>Fund Milestones</h3>
+                  <p>Client creates a project, defines milestone payouts, and deposits total funds into the Soroban contract escrow.</p>
+                  <div className="stepc__meta">Client deposits funds</div>
+                </div>
+                <div className="stepc">
+                  <div className="stepc__hd">
+                    <span className="stepc__n">02</span>
+                    <span className="stepc__rule" />
+                  </div>
+                  <h3>Submit Deliverables</h3>
+                  <p>Freelancer completes work and attaches proof URLs directly to milestones on the decentralized ledger.</p>
+                  <div className="stepc__meta">Provider registers proofs</div>
+                </div>
+                <div className="stepc">
+                  <div className="stepc__hd">
+                    <span className="stepc__n">03</span>
+                    <span className="stepc__rule" />
+                  </div>
+                  <h3>payout or dispute</h3>
+                  <p>Client verifies deliverables to release funds. If disputes occur, designated arbiters settle payouts dynamically.</p>
+                  <div className="stepc__meta">Ledger settles balances</div>
+                </div>
+              </div>
+            </section>
           </div>
         )}
 
-        {page === "create" && (
+        {/* ----------------- WORKSPACE / INNER DASHBOARD STATE ----------------- */}
+        {wallet.account && (
           <div className="page-fade">
-            <Panel eyebrow="Escrow" title="Fund Milestone Agreement" tone="ink">
-              <form className="form-grid" onSubmit={handleCreateProject}>
-                <label>
-                  <span>Project Title</span>
-                  <input type="text" required placeholder="Build Soroban Smart Escrow Dashboard" value={newProjectForm.title} onChange={(e) => setNewProjectForm(curr => ({ ...curr, title: e.target.value }))} />
-                </label>
-                <label>
-                  <span>Service Provider (Freelancer Wallet Address)</span>
-                  <input type="text" required placeholder="G..." value={newProjectForm.provider} onChange={(e) => setNewProjectForm(curr => ({ ...curr, provider: e.target.value }))} />
-                </label>
-                <label>
-                  <span>Total Escrow Budget (USD Credits)</span>
-                  <input type="number" required placeholder="500" value={newProjectForm.budget} onChange={(e) => setNewProjectForm(curr => ({ ...curr, budget: e.target.value }))} />
-                </label>
+            {page === "dashboard" && (
+              <div className="page-fade">
+                <section className="metrics-grid" data-reveal>
+                  <MetricCard
+                    label="Global Projects"
+                    value={globalStats ? String(globalStats.projectCount) : "0"}
+                    note="Agreements Created"
+                    loading={globalStatsQuery.isLoading}
+                  />
+                  <MetricCard
+                    label="Total Funded"
+                    value={globalStats ? `$${globalStats.totalBudget}` : "$0"}
+                    note="Locked volume history"
+                    loading={globalStatsQuery.isLoading}
+                  />
+                  <MetricCard
+                    label="Active Escrow"
+                    value={globalStats ? `$${globalStats.active_escrow || globalStats.activeEscrow}` : "$0"}
+                    note="Currently secured funds"
+                    loading={globalStatsQuery.isLoading}
+                  />
+                  <MetricCard
+                    label="My Active Roles"
+                    value={projects.length ? String(projects.length) : "0"}
+                    note={`${clientProjects.length} client / ${providerProjects.length} provider`}
+                    loading={userProjectsQuery.isLoading}
+                  />
+                </section>
 
-                <div style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3>Milestones Breakdown</h3>
-                    <button className="button button-header" type="button" onClick={handleAddMilestoneInput}>+ Add Milestone</button>
-                  </div>
-
-                  {newProjectForm.milestones.map((milestone, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Deliverable Name"
-                        value={milestone.title}
-                        onChange={(e) => handleMilestoneInputChange(idx, "title", e.target.value)}
-                        style={{ flex: 2 }}
-                      />
-                      <input
-                        type="number"
-                        required
-                        placeholder="Amount"
-                        value={milestone.amount}
-                        onChange={(e) => handleMilestoneInputChange(idx, "amount", e.target.value)}
-                        style={{ flex: 1 }}
-                      />
-                      {newProjectForm.milestones.length > 1 && (
-                        <button
-                          className="button button-header"
-                          type="button"
-                          onClick={() => handleRemoveMilestoneInput(idx)}
-                          style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#f87171' }}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                <div style={{ marginTop: '1.5rem' }} data-reveal>
+                  <Panel eyebrow="Overview" title="Decentralized Trust Platform" n="01">
+                    <p style={{ margin: 0, color: 'var(--ink-2)' }}>
+                      Deploy secure milestone-locked client escrow accounts, submit verified deliverables, and handle arbitration resolutions transparently on the Stellar network.
+                    </p>
+                  </Panel>
                 </div>
 
-                <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !contractReady}>
-                  {createProjectMutation.isPending ? "Locking & Deploying..." : "Deploy & Lock Escrow Funds"}
-                </button>
-              </form>
-            </Panel>
-          </div>
-        )}
-
-        {page === "provider" && (
-          <div className="page-fade">
-            <Panel eyebrow="Freelancer" title="Provider Deliverables Desk" tone="ink">
-              {userProjectsQuery.isLoading ? (
-                <ActivitySkeleton />
-              ) : providerProjects.length ? (
-                <div style={{ display: 'grid', gap: '2rem' }}>
-                  {providerProjects.map((p) => (
-                    <div key={p.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3>{p.title} (Project #{p.id})</h3>
-                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Total Budget: ${p.budget}</span>
-                      </div>
+                <div style={{ marginTop: '1.5rem' }} data-reveal>
+                  <Panel eyebrow="Agreements" title="Active Agreements Overview" n="02">
+                    {userProjectsQuery.isLoading ? (
+                      <ActivitySkeleton />
+                    ) : projects.length ? (
                       <div className="session-list">
-                        {p.milestones.map((m, idx) => (
-                          <div className="session-card" key={idx} style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                        {projects.map((p) => (
+                          <article className="session-card" key={p.id}>
                             <div>
-                              <h4 style={{ margin: '0 0 4px 0' }}>{m.title}</h4>
-                              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                                Amount: <strong style={{ color: 'var(--text-primary)' }}>${m.amount}</strong>
-                              </p>
-                              {m.proofUrl && (
-                                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', fontFamily: 'monospace' }}>
-                                  Proof: <a href={m.proofUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--text-primary)' }}>{m.proofUrl}</a>
-                                </p>
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                              <span className={`network-pill ${milestoneStatusLabels[m.status]?.class || "status-pending"}`}>
-                                {milestoneStatusLabels[m.status]?.text || "Pending"}
+                              <span className={`${projectStatusLabels[p.status]?.class || "tag warning"}`} style={{ marginRight: '8px' }}>
+                                {projectStatusLabels[p.status]?.text || "Unknown"}
                               </span>
-
-                              {m.status === 0 && (
-                                <form
-                                  onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const proof = proofForms[`${p.id}-${idx}`] || "";
-                                    if (!proof) return;
-                                    submitProofMutation.mutate({ projectId: p.id, milestoneIndex: idx, proofUrl: proof });
-                                  }}
-                                  style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
-                                >
-                                  <input
-                                    type="text"
-                                    placeholder="GitHub URL / Proof URL"
-                                    required
-                                    value={proofForms[`${p.id}-${idx}`] || ""}
-                                    onChange={(e) => setProofForms(prev => ({ ...prev, [`${p.id}-${idx}`]: e.target.value }))}
-                                    style={{ width: '180px', padding: '0.5rem' }}
-                                  />
-                                  <button className="button button-header" type="submit" disabled={anyMutationPending}>
-                                    Submit
-                                  </button>
-                                </form>
-                              )}
+                              <h3 style={{ display: 'inline-block', margin: 0 }}>{p.title}</h3>
+                              <p style={{ marginTop: '4px', fontSize: '0.86rem', color: 'var(--ink-3)' }}>
+                                Client: <span style={{ fontFamily: 'var(--mono)' }}>{shortAddress(p.client)}</span> | Provider: <span style={{ fontFamily: 'var(--mono)' }}>{shortAddress(p.provider)}</span>
+                              </p>
                             </div>
-                          </div>
+                            <div className="session-meta">
+                              <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--ink)' }}>${p.budget} USD</span>
+                              <span>{p.milestoneCount} milestones</span>
+                            </div>
+                          </article>
                         ))}
                       </div>
-                    </div>
-                  ))}
+                    ) : (
+                      <p style={{ color: 'var(--ink-3)' }}>No agreements associated with this wallet. Go to "New Agreement" to launch one.</p>
+                    )}
+                  </Panel>
                 </div>
-              ) : (
-                <p className="empty-state">No projects found where you are the Service Provider.</p>
-              )}
-            </Panel>
-          </div>
-        )}
+              </div>
+            )}
 
-        {page === "client" && (
-          <div className="page-fade">
-            <Panel eyebrow="Client" title="Client Escrow Approvals Desk" tone="ink">
-              {userProjectsQuery.isLoading ? (
-                <ActivitySkeleton />
-              ) : clientProjects.length ? (
-                <div style={{ display: 'grid', gap: '2rem' }}>
-                  {clientProjects.map((p) => (
-                    <div key={p.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3>{p.title} (Project #{p.id})</h3>
-                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Budget Secured: ${p.budget}</span>
+            {page === "create" && (
+              <div className="page-fade">
+                <Panel eyebrow="Escrow Setup" title="Fund Milestone Agreement" n="01">
+                  <form className="form-grid" onSubmit={handleCreateProject}>
+                    <label>
+                      <span>Project Title</span>
+                      <input type="text" required placeholder="Build Soroban Smart Escrow Dashboard" value={newProjectForm.title} onChange={(e) => setNewProjectForm(curr => ({ ...curr, title: e.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Service Provider (Freelancer Wallet Address)</span>
+                      <input type="text" required placeholder="G..." value={newProjectForm.provider} onChange={(e) => setNewProjectForm(curr => ({ ...curr, provider: e.target.value }))} />
+                    </label>
+                    <label>
+                      <span>Total Escrow Budget (USD Credits)</span>
+                      <input type="number" required placeholder="500" value={newProjectForm.budget} onChange={(e) => setNewProjectForm(curr => ({ ...curr, budget: e.target.value }))} />
+                    </label>
+
+                    <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--line-2)', paddingTop: '1.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+                        <h3 style={{ margin: 0 }}>Milestones Breakdown</h3>
+                        <button className="btn btn--secondary btn--sm" type="button" onClick={handleAddMilestoneInput}>+ Add Milestone</button>
                       </div>
-                      <div className="session-list">
-                        {p.milestones.map((m, idx) => (
-                          <div className="session-card" key={idx} style={{ flexWrap: 'wrap', gap: '1rem' }}>
-                            <div>
-                              <h4 style={{ margin: '0 0 4px 0' }}>{m.title}</h4>
-                              <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                                Amount: <strong style={{ color: 'var(--text-primary)' }}>${m.amount}</strong>
-                              </p>
-                              {m.proofUrl && (
-                                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', fontFamily: 'monospace' }}>
-                                  Proof submitted: <a href={m.proofUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'var(--text-primary)' }}>{m.proofUrl}</a>
-                                </p>
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span className={`network-pill ${milestoneStatusLabels[m.status]?.class || "status-pending"}`} style={{ marginRight: '8px' }}>
-                                {milestoneStatusLabels[m.status]?.text || "Pending"}
-                              </span>
 
-                              {(m.status === 0 || m.status === 1 || m.status === 3) && (
-                                <>
-                                  <button
-                                    className="button button-header"
-                                    onClick={() => approveMilestoneMutation.mutate({ projectId: p.id, milestoneIndex: idx })}
-                                    disabled={anyMutationPending}
-                                    style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}
-                                  >
-                                    Release
-                                  </button>
-                                  {(m.status === 0 || m.status === 1) && (
-                                    <button
-                                      className="button button-header"
-                                      onClick={() => disputeMilestoneMutation.mutate({ projectId: p.id, milestoneIndex: idx })}
-                                      disabled={anyMutationPending}
-                                      style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}
-                                    >
-                                      Dispute
-                                    </button>
+                      {newProjectForm.milestones.map((milestone, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Deliverable Name"
+                            value={milestone.title}
+                            onChange={(e) => handleMilestoneInputChange(idx, "title", e.target.value)}
+                            style={{ flex: 2 }}
+                          />
+                          <input
+                            type="number"
+                            required
+                            placeholder="Amount"
+                            value={milestone.amount}
+                            onChange={(e) => handleMilestoneInputChange(idx, "amount", e.target.value)}
+                            style={{ flex: 1 }}
+                          />
+                          {newProjectForm.milestones.length > 1 && (
+                            <button
+                              className="btn btn--secondary"
+                              type="button"
+                              onClick={() => handleRemoveMilestoneInput(idx)}
+                              style={{ color: 'var(--alert)', borderColor: 'var(--line-2)' }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <button className="btn btn--primary btn--block" type="submit" disabled={anyMutationPending || !wallet.account}>
+                      {createProjectMutation.isPending ? <span className="spinner" /> : null}
+                      {createProjectMutation.isPending ? "Locking & Deploying..." : "Deploy & Lock Escrow Funds"}
+                    </button>
+                  </form>
+                </Panel>
+              </div>
+            )}
+
+            {page === "provider" && (
+              <div className="page-fade">
+                <Panel eyebrow="Freelancer Desk" title="Provider Deliverables Desk" n="01">
+                  {userProjectsQuery.isLoading ? (
+                    <ActivitySkeleton />
+                  ) : providerProjects.length ? (
+                    <div style={{ display: 'grid', gap: '2rem' }}>
+                      {providerProjects.map((p) => (
+                        <div key={p.id} style={{ borderBottom: '1px solid var(--line-2)', paddingBottom: '1.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
+                            <h3 style={{ margin: 0 }}>{p.title} (Project #{p.id})</h3>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Total Budget: ${p.budget}</span>
+                          </div>
+                          <div className="session-list">
+                            {p.milestones.map((m, idx) => (
+                              <div className="session-card" key={idx} style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                                <div>
+                                  <h4 style={{ margin: '0 0 4px 0' }}>{m.title}</h4>
+                                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--ink-2)' }}>
+                                    Amount: <strong style={{ color: 'var(--ink)' }}>${m.amount}</strong>
+                                  </p>
+                                  {m.proofUrl && (
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', fontFamily: 'var(--mono)' }}>
+                                      Proof: <a href={m.proofUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>{m.proofUrl}</a>
+                                    </p>
                                   )}
-                                </>
-                              )}
-                            </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                  <span className={`${milestoneStatusLabels[m.status]?.class || "tag warning"}`}>
+                                    {milestoneStatusLabels[m.status]?.text || "Pending"}
+                                  </span>
+
+                                  {m.status === 0 && (
+                                    <form
+                                      onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const proof = proofForms[`${p.id}-${idx}`] || "";
+                                        if (!proof) return;
+                                        submitProofMutation.mutate({ projectId: p.id, milestoneIndex: idx, proofUrl: proof });
+                                      }}
+                                      style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+                                    >
+                                      <input
+                                        type="text"
+                                        placeholder="GitHub URL / Proof URL"
+                                        required
+                                        value={proofForms[`${p.id}-${idx}`] || ""}
+                                        onChange={(e) => setProofForms(prev => ({ ...prev, [`${p.id}-${idx}`]: e.target.value }))}
+                                        style={{ width: '180px', padding: '0.5rem' }}
+                                      />
+                                      <button className="btn btn--secondary btn--sm" type="submit" disabled={anyMutationPending}>
+                                        Submit
+                                      </button>
+                                    </form>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-state">No projects found where you are the Client.</p>
-              )}
-            </Panel>
-          </div>
-        )}
-
-        {page === "arbitration" && (
-          <div className="page-fade">
-            <Panel eyebrow="Resolution" title="Dispute Arbitration Desk" tone="ember">
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                Arbitration desk allows simulated third-party validators or admins to resolve active disputes by triggering the callback resolution sequence via Inter-Contract Communication (ICC).
-              </p>
-
-              <form
-                className="form-grid"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const target = e.target;
-                  const projectId = Number(target.projectId.value);
-                  const milestoneIndex = Number(target.milestoneIndex.value);
-                  const payout = target.payout.value === "provider";
-                  resolveDisputeMutation.mutate({ projectId, milestoneIndex, payout });
-                }}
-              >
-                <label>
-                  <span>Project ID</span>
-                  <input type="number" name="projectId" required placeholder="0" />
-                </label>
-                <label>
-                  <span>Milestone Index</span>
-                  <input type="number" name="milestoneIndex" required placeholder="0" />
-                </label>
-                <label>
-                  <span>Arbitration Settlement Action</span>
-                  <select name="payout" style={{ width: '100%', padding: '0.9rem 1.1rem', borderRadius: '16px', border: '1px solid var(--border)', background: 'rgba(15, 23, 42, 0.6)' }}>
-                    <option value="provider">Payout Escrow Funds to Freelancer (Provider)</option>
-                    <option value="client">Refund Escrow Funds to Client</option>
-                  </select>
-                </label>
-
-                <button className="button button-primary" type="submit" disabled={anyMutationPending || !wallet.account || !contractReady}>
-                  {resolveDisputeMutation.isPending ? "Executing Resolution..." : "Execute Arbitration Payout"}
-                </button>
-              </form>
-            </Panel>
-          </div>
-        )}
-
-        {page === "history" && (
-          <div className="page-fade">
-            <div className="history-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-              <Panel eyebrow="RPC" title="Escrow Contract Event Stream" tone="ink">
-                <div className="panel-toolbar" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-                  <ActivityTicker active={contractEventsQuery.isFetching} />
-                </div>
-                {contractEventsQuery.isLoading ? (
-                  <ActivitySkeleton />
-                ) : contractEventsQuery.data?.length ? (
-                  <div className="event-stream">
-                    {contractEventsQuery.data.map((event) => (
-                      <article className="event-card" key={event.id}>
-                        <div>
-                          <p className="event-kicker">{event.topics.join(" / ")}</p>
-                          <h3>{event.summary}</h3>
-                          <p style={{ fontFamily: 'monospace', fontSize: '0.82rem', marginTop: '4px' }}>
-                            Transaction: <a href={getExplorerLink(wallet.networkPassphrase, event.txHash)} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>{shortAddress(event.txHash)}</a>
-                          </p>
                         </div>
-                      </article>
-                    ))}
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: 'var(--ink-3)' }}>No projects found where you are the Service Provider.</p>
+                  )}
+                </Panel>
+              </div>
+            )}
+
+            {page === "client" && (
+              <div className="page-fade">
+                <Panel eyebrow="Client Approvals" title="Client Escrow Approvals Desk" n="01">
+                  {userProjectsQuery.isLoading ? (
+                    <ActivitySkeleton />
+                  ) : clientProjects.length ? (
+                    <div style={{ display: 'grid', gap: '2rem' }}>
+                      {clientProjects.map((p) => (
+                        <div key={p.id} style={{ borderBottom: '1px solid var(--line-2)', paddingBottom: '1.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
+                            <h3 style={{ margin: 0 }}>{p.title} (Project #{p.id})</h3>
+                            <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Budget Secured: ${p.budget}</span>
+                          </div>
+                          <div className="session-list">
+                            {p.milestones.map((m, idx) => (
+                              <div className="session-card" key={idx} style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                                <div>
+                                  <h4 style={{ margin: '0 0 4px 0' }}>{m.title}</h4>
+                                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--ink-2)' }}>
+                                    Amount: <strong style={{ color: 'var(--ink)' }}>${m.amount}</strong>
+                                  </p>
+                                  {m.proofUrl && (
+                                    <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', fontFamily: 'var(--mono)' }}>
+                                      Proof submitted: <a href={m.proofUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>{m.proofUrl}</a>
+                                    </p>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span className={`${milestoneStatusLabels[m.status]?.class || "tag warning"}`} style={{ marginRight: '8px' }}>
+                                    {milestoneStatusLabels[m.status]?.text || "Pending"}
+                                  </span>
+
+                                  {(m.status === 0 || m.status === 1 || m.status === 3) && (
+                                    <>
+                                      <button
+                                        className="btn btn--secondary btn--sm"
+                                        onClick={() => approveMilestoneMutation.mutate({ projectId: p.id, milestoneIndex: idx })}
+                                        disabled={anyMutationPending}
+                                        style={{ color: 'var(--ok)', borderColor: 'rgba(28,122,76,0.2)' }}
+                                      >
+                                        Release
+                                      </button>
+                                      {(m.status === 0 || m.status === 1) && (
+                                        <button
+                                          className="btn btn--secondary btn--sm"
+                                          onClick={() => disputeMilestoneMutation.mutate({ projectId: p.id, milestoneIndex: idx })}
+                                          disabled={anyMutationPending}
+                                          style={{ color: 'var(--alert)', borderColor: 'rgba(178,59,75,0.2)' }}
+                                        >
+                                          Dispute
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: 'var(--ink-3)' }}>No projects found where you are the Client.</p>
+                  )}
+                </Panel>
+              </div>
+            )}
+
+            {page === "arbitration" && (
+              <div className="page-fade">
+                <Panel eyebrow="Resolution Desk" title="Dispute Arbitration Desk" n="01">
+                  <p style={{ color: 'var(--ink-2)', marginBottom: '1.5rem' }}>
+                    Arbitration desk allows simulated third-party validators or admins to resolve active disputes by triggering the callback resolution sequence via Inter-Contract Communication (ICC).
+                  </p>
+
+                  <form
+                    className="form-grid"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const target = e.target;
+                      const projectId = Number(target.projectId.value);
+                      const milestoneIndex = Number(target.milestoneIndex.value);
+                      const payout = target.payout.value === "provider";
+                      resolveDisputeMutation.mutate({ projectId, milestoneIndex, payout });
+                    }}
+                  >
+                    <label>
+                      <span>Project ID</span>
+                      <input type="number" name="projectId" required placeholder="0" />
+                    </label>
+                    <label>
+                      <span>Milestone Index</span>
+                      <input type="number" name="milestoneIndex" required placeholder="0" />
+                    </label>
+                    <label>
+                      <span>Arbitration Settlement Action</span>
+                      <select name="payout">
+                        <option value="provider">Payout Escrow Funds to Freelancer (Provider)</option>
+                        <option value="client">Refund Escrow Funds to Client</option>
+                      </select>
+                    </label>
+
+                    <button className="btn btn--primary btn--block" type="submit" disabled={anyMutationPending || !wallet.account || !contractReady}>
+                      {resolveDisputeMutation.isPending ? <span className="spinner" /> : null}
+                      {resolveDisputeMutation.isPending ? "Executing Resolution..." : "Execute Arbitration Payout"}
+                    </button>
+                  </form>
+                </Panel>
+              </div>
+            )}
+
+            {page === "history" && (
+              <div className="page-fade">
+                <Panel eyebrow="Stellar RPC" title="Escrow Contract Event Stream" n="01">
+                  <div style={{ marginBottom: '1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <ActivityTicker active={contractEventsQuery.isFetching} />
                   </div>
-                ) : (
-                  <p className="empty-state">No recent escrow contract events detected.</p>
-                )}
-              </Panel>
-            </div>
+                  {contractEventsQuery.isLoading ? (
+                    <ActivitySkeleton />
+                  ) : contractEventsQuery.data?.length ? (
+                    <div className="event-stream">
+                      {contractEventsQuery.data.map((event) => (
+                        <article className="event-card" key={event.id}>
+                          <div>
+                            <p className="event-kicker">{event.topics.join(" / ")}</p>
+                            <h3 style={{ margin: 0 }}>{event.summary}</h3>
+                            <p style={{ fontFamily: 'var(--mono)', fontSize: '0.82rem', marginTop: '4px', color: 'var(--ink-2)' }}>
+                              Transaction: <a href={getExplorerLink(wallet.networkPassphrase, event.txHash)} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>{shortAddress(event.txHash)}</a>
+                            </p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: 'var(--ink-3)' }}>No recent escrow contract events detected.</p>
+                  )}
+                </Panel>
+              </div>
+            )}
           </div>
         )}
       </main>
+      
+      <footer className="foot wrap">
+        <div className="foot__in">
+          <span>trustescrow, milestone-locked escrow agreements secured on Stellar Soroban</span>
+          <span>testnet, Apache 2.0</span>
+        </div>
+      </footer>
+
       <a 
         href="https://forms.gle/4PRxsnXBNGUrtvrB9" 
         target="_blank" 
@@ -824,6 +916,6 @@ export default function App() {
       >
         💬 Submit Feedback
       </a>
-    </div>
+    </>
   );
 }
