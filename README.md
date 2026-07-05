@@ -358,6 +358,6 @@ npm run dev
 
 ## Author
 
-**Barsha Saha** — [@barish245](https://github.com/barish245)
+**Praveen Garakoti** — [@praveengarakot](https://github.com/praveengarakot)
 
 *Built for the RiseIn Stellar dApp Development Program — Level 4*
