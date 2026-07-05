@@ -5,7 +5,7 @@ import {
   setAllowed,
   signTransaction
 } from "@stellar/freighter-api";
-import { focusForgeConfig } from "./contract-config.js";
+import { trustEscrowConfig } from "./contract-config.js";
 
 const networkLabels = {
   "Public Global Stellar Network ; September 2015": "Stellar Mainnet",
@@ -14,9 +14,9 @@ const networkLabels = {
 };
 
 export const configuredContractId =
-  import.meta.env.VITE_CONTRACT_ID || focusForgeConfig.fallbackContractId || "";
+  import.meta.env.VITE_CONTRACT_ID || trustEscrowConfig.fallbackContractId || "";
 export const configuredRewardsContractId =
-  import.meta.env.VITE_REWARDS_CONTRACT_ID || focusForgeConfig.fallbackRewardsContractId || "";
+  import.meta.env.VITE_REWARDS_CONTRACT_ID || trustEscrowConfig.fallbackRewardsContractId || "";
 export const configuredNetworkPassphrase =
   import.meta.env.VITE_STELLAR_NETWORK_PASSPHRASE ||
   "Test SDF Network ; September 2015";
@@ -29,39 +29,37 @@ async function loadStellarSdk() {
   if (!stellarSdkPromise) {
     stellarSdkPromise = import("@stellar/stellar-sdk");
   }
-
   return stellarSdkPromise;
 }
 
-function normalizeDashboard(dashboard) {
+function normalizeProject(id, proj) {
   return {
-    displayName: dashboard.display_name,
-    weeklyGoalMinutes: Number(dashboard.weekly_goal_minutes),
-    totalMinutes: Number(dashboard.total_minutes),
-    minutesThisWeek: Number(dashboard.minutes_this_week),
-    sessionCount: Number(dashboard.session_count),
-    currentStreak: Number(dashboard.current_streak),
-    createdAt: Number(dashboard.created_at),
-    goalReachedThisWeek: Boolean(dashboard.goal_reached_this_week)
+    id,
+    client: proj.client,
+    provider: proj.provider,
+    title: proj.title,
+    budget: Number(proj.budget),
+    milestoneCount: Number(proj.milestone_count),
+    status: Number(proj.status), // 0 = Active, 1 = Completed, 2 = Disputed
+    createdAt: Number(proj.created_at)
+  };
+}
+
+function normalizeMilestone(milestone) {
+  return {
+    title: milestone.title,
+    amount: Number(milestone.amount),
+    status: Number(milestone.status), // 0 = Pending, 1 = Submitted, 2 = Approved, 3 = Disputed, 4 = Refunded
+    proofUrl: milestone.proof_url,
+    completedAt: Number(milestone.completed_at)
   };
 }
 
 function normalizeGlobalStats(stats) {
   return {
-    learnerCount: Number(stats.learner_count || 0),
-    totalSessions: Number(stats.total_sessions || 0),
-    totalMinutes: Number(stats.total_minutes || 0),
-    latestActivityAt: Number(stats.latest_activity_at || 0)
-  };
-}
-
-function normalizeSession(index, session) {
-  return {
-    id: `${index}-${session.timestamp}`,
-    topic: session.topic,
-    minutesSpent: Number(session.minutes_spent),
-    timestamp: Number(session.timestamp),
-    streakAfterLog: Number(session.streak_after_log)
+    projectCount: Number(stats.project_count || 0),
+    totalBudget: Number(stats.total_budget || 0),
+    activeEscrow: Number(stats.active_escrow || 0)
   };
 }
 
@@ -108,21 +106,17 @@ function serializeEventValue(value) {
   if (value === null || value === undefined) {
     return value;
   }
-
   if (typeof value === "bigint") {
     return value.toString();
   }
-
   if (Array.isArray(value)) {
     return value.map(serializeEventValue);
   }
-
   if (typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [key, serializeEventValue(entry)])
     );
   }
-
   return value;
 }
 
@@ -136,15 +130,12 @@ function eventSummary(topics, payload) {
   if (!payload || typeof payload !== "object") {
     return headline;
   }
-
-  if (payload.display_name) {
-    return `${headline}: ${payload.display_name}`;
+  if (payload.title) {
+    return `${headline}: ${payload.title}`;
   }
-
-  if (payload.topic) {
-    return `${headline}: ${payload.topic}`;
+  if (payload.project_id !== undefined) {
+    return `${headline} (Project #${payload.project_id})`;
   }
-
   return headline;
 }
 
@@ -172,7 +163,6 @@ async function getWalletSnapshot() {
   if (addressResult.error) {
     throw new Error(addressResult.error.message);
   }
-
   if (networkResult.error) {
     throw new Error(networkResult.error.message);
   }
@@ -197,35 +187,16 @@ export function shortAddress(value = "") {
   if (!value) {
     return "Not connected";
   }
-
   if (value.length <= 14) {
     return value;
   }
-
   return `${value.slice(0, 6)}...${value.slice(-6)}`;
-}
-
-export function formatMinutes(totalMinutes) {
-  const minutes = Number(totalMinutes || 0);
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-
-  if (!hours) {
-    return `${minutes}m`;
-  }
-
-  if (!remainder) {
-    return `${hours}h`;
-  }
-
-  return `${hours}h ${remainder}m`;
 }
 
 export function formatDate(unixSeconds) {
   if (!unixSeconds) {
-    return "No sessions logged yet";
+    return "N/A";
   }
-
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short"
@@ -236,7 +207,6 @@ export function formatDateTime(value) {
   if (!value) {
     return "No activity yet";
   }
-
   const source =
     typeof value === "string" && value.includes("T")
       ? new Date(value)
@@ -245,7 +215,6 @@ export function formatDateTime(value) {
   if (Number.isNaN(source.getTime())) {
     return "No activity yet";
   }
-
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short"
@@ -256,15 +225,12 @@ export function getExplorerLink(networkPassphrase, hash) {
   if (!hash) {
     return "";
   }
-
   if (networkPassphrase === "Test SDF Network ; September 2015") {
     return `https://stellar.expert/explorer/testnet/tx/${hash}`;
   }
-
   if (networkPassphrase === "Public Global Stellar Network ; September 2015") {
     return `https://stellar.expert/explorer/public/tx/${hash}`;
   }
-
   return "";
 }
 
@@ -272,15 +238,12 @@ export function getContractExplorerLink(networkPassphrase, contractId) {
   if (!contractId) {
     return "";
   }
-
   if (networkPassphrase === "Test SDF Network ; September 2015") {
     return `https://lab.stellar.org/r/testnet/contract/${contractId}`;
   }
-
   if (networkPassphrase === "Public Global Stellar Network ; September 2015") {
     return `https://lab.stellar.org/r/mainnet/contract/${contractId}`;
   }
-
   return "";
 }
 
@@ -305,7 +268,6 @@ export async function discoverWalletState() {
       rpcUrl: configuredRpcUrl
     };
   }
-
   return getWalletSnapshot();
 }
 
@@ -314,24 +276,10 @@ export async function connectWallet() {
   if (permission.error) {
     throw new Error(permission.error.message);
   }
-
   if (!permission.isAllowed) {
     throw new Error("Freighter did not grant access to this app.");
   }
-
   return getWalletSnapshot();
-}
-
-export async function readDashboard(account) {
-  const client = await buildClient();
-  const hasProfileTx = await client.has_profile({ learner: account });
-
-  if (!hasProfileTx.result) {
-    return null;
-  }
-
-  const dashboardTx = await client.get_dashboard({ learner: account });
-  return normalizeDashboard(dashboardTx.result);
 }
 
 export async function readGlobalStats() {
@@ -340,40 +288,37 @@ export async function readGlobalStats() {
   return normalizeGlobalStats(statsTx.result);
 }
 
-export async function readRecentSessions(account, limit = 5) {
+export async function readUserProjects(account) {
   const client = await buildClient();
-  const countTx = await client.get_session_count({ learner: account });
-  const count = Number(countTx.result || 0);
+  const projectsTx = await client.get_user_projects({ user: account });
+  const projectIds = Array.from(projectsTx.result || []);
 
-  if (!count) {
-    return [];
-  }
+  const projects = await Promise.all(
+    projectIds.map(async (id) => {
+      const projTx = await client.get_project({ project_id: id });
+      const projNormalized = normalizeProject(id, projTx.result);
 
-  const indexes = Array.from({ length: Math.min(count, limit) }, (_, idx) => count - idx - 1);
-  const sessionResults = await Promise.all(
-    indexes.map(async (index) => {
-      const sessionTx = await client.get_session({ learner: account, index });
-      return normalizeSession(index, sessionTx.result);
+      // Fetch milestones details
+      const milestones = [];
+      for (let i = 0; i < projNormalized.milestoneCount; i++) {
+        const milestoneTx = await client.get_milestone({ project_id: id, milestone_index: i });
+        milestones.push(normalizeMilestone(milestoneTx.result));
+      }
+
+      return {
+        ...projNormalized,
+        milestones
+      };
     })
   );
 
-  return sessionResults;
-}
-
-export async function readBadges(account) {
-  if (!configuredRewardsContractId) {
-    return [];
-  }
-  const client = await buildRewardsClient();
-  const badgesTx = await client.get_badges({ learner: account });
-  return Array.from(badgesTx.result || []).map(Number);
+  return projects;
 }
 
 export async function readContractEvents(limit = 6) {
   if (!hasContractConfig()) {
     return [];
   }
-
   const server = await buildRpcServer();
   const latestLedger = await server.getLatestLedger();
   const latestSequence = Number(latestLedger.sequence || 0);
@@ -404,34 +349,77 @@ async function submitTransaction(assembledTx) {
   };
 }
 
-export async function saveProfile(account, displayName, weeklyGoalMinutes) {
+export async function createProject(account, provider, title, budget, milestoneTitles, milestoneAmounts) {
   const client = await buildClient(account);
-  const tx = await client.save_profile({
-    learner: account,
-    display_name: displayName,
-    weekly_goal_minutes: Number(weeklyGoalMinutes)
+  const tx = await client.create_project({
+    client: account,
+    provider,
+    title,
+    budget: BigInt(budget),
+    milestone_titles: milestoneTitles,
+    milestone_amounts: milestoneAmounts.map(BigInt)
   });
-
   return submitTransaction(tx);
 }
 
-export async function updateWeeklyGoal(account, weeklyGoalMinutes) {
+export async function submitMilestoneProof(account, projectId, milestoneIndex, proofUrl) {
   const client = await buildClient(account);
-  const tx = await client.update_weekly_goal({
-    learner: account,
-    new_goal_minutes: Number(weeklyGoalMinutes)
+  const tx = await client.submit_milestone_proof({
+    provider: account,
+    project_id: projectId,
+    milestone_index: milestoneIndex,
+    proof_url: proofUrl
   });
-
   return submitTransaction(tx);
 }
 
-export async function logSession(account, topic, minutesSpent) {
+export async function approveMilestone(account, projectId, milestoneIndex) {
   const client = await buildClient(account);
-  const tx = await client.log_session({
-    learner: account,
-    topic,
-    minutes_spent: Number(minutesSpent)
+  const tx = await client.approve_milestone({
+    client: account,
+    project_id: projectId,
+    milestone_index: milestoneIndex
   });
-
   return submitTransaction(tx);
+}
+
+export async function disputeMilestone(account, projectId, milestoneIndex) {
+  const client = await buildClient(account);
+  const tx = await client.dispute_milestone({
+    caller: account,
+    project_id: projectId,
+    milestone_index: milestoneIndex
+  });
+  return submitTransaction(tx);
+}
+
+export async function resolveDispute(account, projectId, milestoneIndex, payoutToProvider) {
+  const client = await buildRewardsClient(account);
+  const tx = await client.resolve_dispute({
+    resolver: account,
+    project_id: projectId,
+    milestone_index: milestoneIndex,
+    payout_to_provider: payoutToProvider
+  });
+  return submitTransaction(tx);
+}
+
+export async function readDisputeDetails(projectId, milestoneIndex) {
+  try {
+    const client = await buildRewardsClient();
+    const disputeTx = await client.get_dispute({
+      project_id: projectId,
+      milestone_index: milestoneIndex
+    });
+    const res = disputeTx.result;
+    return {
+      client: res.client,
+      provider: res.provider,
+      amount: Number(res.amount),
+      resolved: Boolean(res.resolved),
+      payoutToProvider: Boolean(res.payout_to_provider)
+    };
+  } catch {
+    return null;
+  }
 }

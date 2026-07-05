@@ -1,13 +1,7 @@
-export const focusForgeConfig = {
-  "contractName": "FocusForge",
-  "fallbackContractId": "CC3HYOJYCACHERMGLTXQZ433GUEFBQGZBKCFCFK7TODUQWG6VYVRXZHE",
-  "fallbackRewardsContractId": "CDCO54FPIDLEPEM7QEM27I5G5W3TS6S3AWPF367ZU25CSBCX3SDUPUCA",
+export const trustEscrowConfig = {
+  "contractName": "TrustEscrow",
+  "fallbackContractId": "CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB",
+  "fallbackRewardsContractId": "CBPTXWCNCRZC53SV2J2DC5EZKF4VMGSBMVAIQTPRGR57QQPQ553T6W3X",
   "fallbackNetwork": "testnet",
-  "generatedAt": "2026-06-19T17:59:30.916Z",
-  "limits": {
-    "minSessionMinutes": 5,
-    "maxSessionMinutes": 480,
-    "minGoalMinutes": 30,
-    "maxGoalMinutes": 5000
-  }
+  "generatedAt": "2026-06-19T18:31:28.665Z"
 };
