@@ -329,6 +329,11 @@ export default function App() {
         ...nextState,
         isConnecting: false
       });
+      // Telemetry capture: wallet linked
+      import("posthog-js").then(({ default: posthog }) => {
+        posthog.identify(nextState.address || nextState.account);
+        posthog.capture("wallet_connected", { account: nextState.address || nextState.account });
+      }).catch(() => {});
     } catch (error) {
       setWallet((current) => ({
         ...current,
@@ -357,6 +362,15 @@ export default function App() {
       setTxState({ status: "error", message: `Milestones sum (${sumAmounts}) must match total budget (${budget}).`, hash: "" });
       return;
     }
+
+    // Telemetry capture: project creation initialized
+    import("posthog-js").then(({ default: posthog }) => {
+      posthog.capture("create_project_initiated", {
+        title,
+        budget,
+        milestoneCount: milestoneTitles.length
+      });
+    }).catch(() => {});
 
     createProjectMutation.mutate({
       provider,

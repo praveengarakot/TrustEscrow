@@ -1,191 +1,359 @@
-# TrustEscrow
+# ⚡ TrustEscrow
 
-[![CI](https://github.com/barish245/ForgeMind/actions/workflows/ci.yml/badge.svg)](https://github.com/barish245/ForgeMind/actions/workflows/ci.yml)
+<div align="center">
 
-TrustEscrow is a Stellar Soroban milestone-based escrow and decentralized dispute arbitration platform. Freelancers and clients lock up deliverable payments securely in escrow accounts, submit verified milestones proofs, and resolve disputes transparently through a secondary arbitration contract via Inter-Contract Communication (ICC).
+**A Decentralized Escrow and Dispute Arbitration Platform on Stellar**
 
-### 🔴 The Problem
-In the Web2 gig economy, freelancers and remote workers face significant financial friction:
-- **Payment Default & Delay**: Freelancers frequently experience clients who default on payments, delay payouts, or refuse to pay after the work is delivered.
-- **High Intermediary Fees**: Established platforms like Upwork or Fiverr charge exorbitant fees (10% to 20%), cutting deep into freelancer profits.
-- **Counterparty Risk**: Clients are hesitant to pay upfront due to quality concerns, while freelancers are reluctant to start work without financial assurance.
+*Trustless milestone payments secured by Stellar Soroban smart contracts and ICC arbitration*
 
-### 🟢 The Solution
-TrustEscrow solves these issues by establishing a trustless, milestone-based escrow system utilizing Stellar's ultra-low transaction costs and Soroban's smart contracts:
-- **Secure Milestone Locking**: Clients fund the agreement budget directly into the smart contract's escrow vault, guaranteeing the freelancer that funds are secured.
-- **Permissionless Payments**: Payouts are organized in stages (milestones) and released immediately upon client approval.
-- **Decentralized Dispute Resolution**: If work is disputed, funds are locked under arbitration. A secondary Resolution contract settles the dispute and executes settlement payouts back to the main contract using Inter-Contract Communication (ICC).
-- **Fractional Costs**: Transactions cost fractions of a cent, allowing freelancers to keep 99.9% of their earnings.
+[![Live Demo](https://img.shields.io/badge/Live_Demo-trustescrow--stellar.netlify.app-6366f1?style=for-the-badge&logo=netlify)](https://trustescrow-stellar.netlify.app/)
+[![GitHub](https://img.shields.io/badge/Source_Code-praveengarakot%2FTrustEscrow-181717?style=for-the-badge&logo=github)](https://github.com/praveengarakot/TrustEscrow)
+[![Network](https://img.shields.io/badge/Network-Stellar_Testnet-00B4D8?style=for-the-badge&logo=stellar)](https://stellar.expert/explorer/testnet)
+[![Built for RiseIn](https://img.shields.io/badge/Built_for-RiseIn_Level_4-f59e0b?style=for-the-badge)](https://www.risein.com/)
 
+</div>
 
-## Live Submission Links
+---
 
-- Public repository: [GitHub Repository](https://github.com/praveengarakot/TrustEscrow)
-- Live demo: [trustescrow.netlify.app](https://trustescrow.netlify.app/)
-- Netlify production deployment: [Netlify Deployment](https://trustescrow.netlify.app/)
-- MVP video: [Google Drive Link](https://drive.google.com/file/d/1dOVVA3A3U-OrmAC22FFON_RBe6q4ycMa/view?usp=sharing)
+## 📋 Table of Contents
 
-## Screenshots
+1. [Problem Statement](#-problem-statement)
+2. [Why Stellar?](#-why-stellar)
+3. [Live Deployment](#-live-deployment)
+4. [Contract Addresses & Transactions](#-contract-addresses--transactions)
+5. [User Onboarding & Feedback](#-user-onboarding--feedback)
+6. [Architecture](#-architecture)
+7. [Smart Contracts](#-smart-contracts)
+8. [Production Hardening (Level 4)](#-production-hardening-level-4)
+9. [Tech Stack](#-tech-stack)
+10. [Project Structure](#-project-structure)
+11. [Testing](#-testing)
+12. [CI/CD Pipeline](#-cicd-pipeline)
+13. [Local Development](#-local-development)
+14. [Roadmap](#-roadmap)
+15. [Author](#-author)
 
-### Desktop UI
+---
 
-![TrustEscrow desktop UI](./SUBMISSION%20ASSETS/ui2.png)
+## 🔴 Problem Statement
 
-### Mobile UI
+The global freelance economy is structurally fragmented and carries high payment and trust friction for remote workers and project owners.
 
-![TrustEscrow mobile UI](./SUBMISSION%20ASSETS/ui4.png)
+| Issue | Impact |
+|-------|--------|
+| **Platform Extractions** | Centrally managed platforms extract 10–20% in intermediary commissions directly from worker payouts. |
+| **Payment Defaults** | Freelancers frequently deliver milestones only to face client defaults, delayed payouts, or payment refusal. |
+| **Cross-Border Friction** | Traditional international bank transfers take 5–14 business days and incur high wire fees. |
+| **Opaque Arbitrations** | Disputes resolved by centralized support agents are slow, subjective, and completely non-auditable. |
 
-### CI/CD
+**TrustEscrow** removes the intermediary risk entirely. Using programmable, auditable Soroban smart contracts, clients lock budget funds on-chain into a secure escrow vault. Funds are automatically released to the provider immediately upon milestone approval — eliminating platform fees, settlement delays, and counterparty risks.
 
-![TrustEscrow CI/CD](./SUBMISSION%20ASSETS/cicd.png)
+---
 
-## Project Overview
+## 🌟 Why Stellar?
 
-TrustEscrow secures freelancing gig payments on-chain. Each wallet can:
+TrustEscrow is designed specifically to utilize the native advantages of the Stellar network:
 
-- **New Agreement**: Clients define provider wallets, titles, total budgets, and create custom milestone breakdowns with locking funds.
-- **Provider Hub**: Freelancers inspect project requirements, trace deliverables status, and submit proof URLs to lock in milestones for review.
-- **Client Hub**: Clients review submitted deliverables, release milestone payouts, or raise disputes to lock funds under arbitration.
-- **Arbitration Desk**: Community validators or designated admins vote and settle disputed milestones to execute callback payouts via ICC.
-- **RPC Event Streaming**: Real-time polling for project creation, proof submissions, approvals, and dispute actions directly from Soroban RPC.
+| Stellar Property | TrustEscrow Benefit |
+|-----------------|-------------------|
+| **~5 Second Finality** | Speeds up settlement times so developers receive milestone payouts instantly. |
+| **Micro-fees ($0.00001)** | Makes micro-payout structures (e.g. $10 tasks) feasible — which is economically unviable on high-gas networks. |
+| **Soroban Smart Contracts** | Supports robust Inter-Contract Communication (ICC) to transition payment escrow states automatically. |
+| **Sponsorship Capabilities** | Path to gas-sponsored onboarding, allowing clients to cover fee-bump costs for freelancers. |
 
-## Architecture
+---
 
-### Smart Contracts
+## 🌐 Live Deployment
 
-#### Main Escrow Contract: `contracts/focus_forge`
-Handles agreements setup, escrow deposits, deliverable logging, and releases.
-Methods:
-- `create_project(client, provider, title, budget, milestone_titles, milestone_amounts)`
-- `submit_milestone_proof(provider, project_id, milestone_index, proof_url)`
-- `approve_milestone(client, project_id, milestone_index)`
-- `dispute_milestone(caller, project_id, milestone_index)`
-- `execute_resolution(project_id, milestone_index, payout_to_provider)` (called via ICC from the arbitration contract)
-- `get_project(project_id)`
-- `get_milestone(project_id, milestone_index)`
-- `get_user_projects(user)`
-- `get_global_stats()`
+| Resource | Link |
+|----------|------|
+| 🌍 **Live dApp** | [trustescrow-stellar.netlify.app](https://trustescrow-stellar.netlify.app/) |
+| 🎬 **Demo Video** | [Google Drive — Walkthrough Recording](https://drive.google.com/file/d/1dOVVA3A3U-OrmAC22FFON_RBe6q4ycMa/view?usp=sharing) |
+| 💻 **GitHub Repo** | [praveengarakot/TrustEscrow](https://github.com/praveengarakot/TrustEscrow) |
+| 📋 **User Feedback Form** | [TrustEscrow Usability Survey — Google Forms](https://forms.gle/mHik3thtzZtxCfYg9) |
+| 📊 **Onboarded Users & Wallet Interactions** | [Responses Tracker — Google Sheets](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
 
-#### Arbitration Contract: `contracts/focus_forge_rewards`
-Manages dispute escalation records and executes settlements.
-Methods:
-- `escalate_dispute(caller, project_id, milestone_index, client, provider, amount)` (called via ICC from main contract)
-- `resolve_dispute(resolver, project_id, milestone_index, payout_to_provider)`
-- `get_dispute(project_id, milestone_index)`
+---
 
-### Frontend
+## 🔗 Contract Addresses & Transactions
 
-Location: [`frontend/src`](./frontend/src)
-- React + Vite + TanStack Query + Freighter Wallet.
-- Responsive, swipeable dark monochromatic UI built with pure vanilla CSS.
+All contracts are deployed and cross-initialized on the **Stellar Testnet** using the `praveen` developer identity.
 
-## Contract Deployment
+### Deployed Contract IDs
 
-- Network: `Stellar Testnet`
-- Escrow Contract ID: [CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB](https://lab.stellar.org/r/testnet/contract/CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB)
-- Arbitration Contract ID: [CBPTXWCNCRZC53SV2J2DC5EZKF4VMGSBMVAIQTPRGR57QQPQ553T6W3X](https://lab.stellar.org/r/testnet/contract/CBPTXWCNCRZC53SV2J2DC5EZKF4VMGSBMVAIQTPRGR57QQPQ553T6W3X)
-- Deployment record: [deployments/testnet.json](./deployments/testnet.json)
+| Contract | Address |
+|----------|---------|
+| **Escrow Main Contract** | `CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB` |
+| **Arbitration Dispute Contract** | `CBPTXWCNCRZC53SV2J2DC5EZKF4VMGSBMVAIQTPRGR57QQPQ553T6W3X` |
 
-Deployment transactions:
-- Soroban Arbitration Deploy TX: [4f2c1ce347f2f501bd4867d64767ae0b0e7a974cf977c7161c95001a08cdca64](https://stellar.expert/explorer/testnet/tx/4f2c1ce347f2f501bd4867d64767ae0b0e7a974cf977c7161c95001a08cdca64)
-- Soroban Escrow Deploy TX: [4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35](https://stellar.expert/explorer/testnet/tx/4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35)
-- Arbitration Initialize TX: [5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2](https://stellar.expert/explorer/testnet/tx/5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2)
-- Escrow Initialize TX: [4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a](https://stellar.expert/explorer/testnet/tx/4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a)
+### On-Chain Deployment Transactions
 
-## CI/CD
+| Action | Transaction Hash |
+|--------|-----------------|
+| **Arbitration Contract — Upload & Deploy** | [`4f2c1ce347f2f501bd4867d64767ae0b0e7a974cf977c7161c95001a08cdca64`](https://stellar.expert/explorer/testnet/tx/4f2c1ce347f2f501bd4867d64767ae0b0e7a974cf977c7161c95001a08cdca64) |
+| **Escrow Contract — Upload & Deploy** | [`4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35`](https://stellar.expert/explorer/testnet/tx/4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35) |
+| **Arbitration Contract — Initialize** | [`5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2`](https://stellar.expert/explorer/testnet/tx/5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2) |
+| **Escrow Contract — Initialize** | [`4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a`](https://stellar.expert/explorer/testnet/tx/4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a) |
 
-GitHub Actions workflow: [`ci.yml`](./.github/workflows/ci.yml)
-The pipeline runs:
-- `npm ci`
-- `cargo fmt --all --check`
-- `cargo test`
-- `cargo build --target wasm32v1-none --release -p focus_forge`
-- `npm run lint`
-- `npm run build:frontend`
+---
 
-## Local Setup
+## 👥 User Onboarding & Feedback
 
-### 1. Install dependencies
-```powershell
+As part of the Level 4 production MVP requirements, we onboarded real users to validate the complete milestone escrow lifecycle on the Stellar Testnet.
+
+**Onboarding Journey:**
+
+```
+1. User installs Freighter Wallet → Funds testnet account via Friendbot
+2. Client deploys and funds a new milestone agreement
+3. Contractor accepts terms and checks active deliverables
+4. Contractor submits milestone work proof URL
+5. Client reviews and approves → Escrow contract releases payment to contractor
+6. Alternatively, disputes lock funds into Arbitration for resolution
+7. Users submit feedback via the Google Form
+```
+
+| Resource | Link |
+|----------|------|
+| 📋 **Feedback Form** | [Submit Feedback](https://forms.gle/mHik3thtzZtxCfYg9) |
+| 📊 **User Responses & Wallet Proof** | [View Spreadsheet](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
+
+---
+
+## 🏗️ Architecture
+
+TrustEscrow consists of two Soroban smart contracts communicating via Inter-Contract Calls (ICC), and a React frontend that builds and submits signed transactions via Freighter.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          React Frontend                             │
+│                                                                     │
+│  Landing │ Dashboard │ New Agreement │ Provider Desk │ Client Desk  │
+│                                                                     │
+│                         Freighter API                               │
+└──────────────────┬─────────────────────────────┬───────────────────┘
+                   │ TypeScript Contract Clients  │
+          ┌────────▼─────────┐         ┌─────────▼────────┐
+          │ Escrow Contract  │──ICC──→ │Arbitration Desk  │
+          │                  │         │                  │
+          │  create_project()│         │ escalate_dispute()│
+          │  submit_proof()  │         │ resolve_dispute()│
+          │  approve_milestone│        │ get_dispute()    │
+          │  dispute_milestone│        │                  │
+          │  execute_        │         │                  │
+          │    resolution()  │         │                  │
+          └──────────────────┘         └──────────────────┘
+                            Stellar Testnet
+```
+
+### Inter-Contract Communication (ICC) Flow
+
+Escrow funding, deliverables tracking, and payments are managed atomically on-chain. If a client disputes a milestone, the escrow contract uses ICC to escalate the dispute to the arbitration desk contract, locking the funds until resolution.
+
+```
+Step 1: Client calls create_project()      → Project is funded and active.
+Step 2: Provider calls submit_proof()      → Milestone is marked as Submitted.
+Step 3a: Client calls approve_milestone()  → Funds are released directly to Provider.
+Step 3b: Client calls dispute_milestone()  → Escrow contract calls escalate_dispute()
+                                             on Arbitration contract via ICC.
+Step 4: Arbiter calls resolve_dispute()    → Arbitration contract calls back to main
+                                             Escrow contract via ICC execute_resolution().
+                                             Funds are paid out or refunded.
+```
+
+---
+
+## 📜 Smart Contracts
+
+### Escrow Main Contract (`CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB`)
+
+Manages projects setup, deposits, proof submissions, and payout executions.
+
+| Function | Access | Description |
+|----------|--------|-------------|
+| `create_project()` | Client | Fund a new milestone-locked agreement budget |
+| `submit_milestone_proof()` | Provider | Attach a deliverable URL to a pending milestone |
+| `approve_milestone()` | Client | Release locked funds for a completed milestone |
+| `dispute_milestone()` | Client/Provider | Dispute a milestone → ICC escalates to Arbitration |
+| `execute_resolution()` | Arbitration Contract only | Settles dispute payouts based on arbitration decision |
+| `get_project()` | Public (read) | Retrieve active project configuration |
+| `get_milestone()` | Public (read) | Query individual milestone status |
+| `get_user_projects()` | Public (read) | List projects associated with a user wallet |
+| `get_global_stats()` | Public (read) | Fetch platform aggregate stats |
+
+### Arbitration Contract (`CBPTXWCNCRZC53SV2J2DC5EZKF4VMGSBMVAIQTPRGR57QQPQ553T6W3X`)
+
+Handles dispute records and resolves payout distributions.
+
+| Function | Access | Description |
+|----------|--------|-------------|
+| `escalate_dispute()` | Escrow Contract only | Register new dispute records via ICC |
+| `resolve_dispute()` | Authorized Arbiter | Settle dispute → ICC calls `execute_resolution()` on main contract |
+| `get_dispute()` | Public (read) | Query dispute details |
+
+---
+
+## 🛡️ Production Hardening (Level 4)
+
+We implemented robust validation checks, error-handling schemes, and telemetry integrations for our production-ready Level 4 release:
+
+### Smart Contract Security
+*   **ICC Caller Authorization Constraints**: Restricted `execute_resolution()` on the main contract to only accept calls originating from the Arbitration contract address.
+*   **Initialization Guards**: Prevented double initialization on deployed instances.
+*   **Validation Checks**: Enforce positive milestone bounds, non-empty titles, and correct sum matching total budgets.
+
+### Frontend Production Quality
+*   **Light-Editorial Theme**: Transformed the UI layout using the `ui-ux-pro-max` design system with warm paper backgrounds (`#f5f4f0`), clean card segments (`#ffffff`), and contrast typography.
+*   **Top Navigation Layout**: Converted the sidebar into a sticky frosted-glass top navigation bar.
+*   **Deploy Button Fix**: Corrected deployment flags allowing the app to launch agreements using default fallback settings when environment variables are uninitialized.
+*   **SPA Falling Handler**: Configured Netlify routing redirection to handle sub-route refreshes successfully.
+
+### Monitoring & Analytics
+*   **PostHog**: Integrated product analytics tracking for `wallet_connected` and `create_project_initiated` events.
+*   **Sentry**: Added React-based error boundaries and exception monitoring.
+
+---
+
+## 📸 Submission Screenshots
+
+### 🖥️ Desktop UI
+
+<p align="center">
+  <img src="SUBMISSION%20ASSETS/ui2.png" width="800" alt="TrustEscrow Desktop UI Screenshot" />
+</p>
+
+### 📊 Analytics Desk
+
+<p align="center">
+  <img src="SUBMISSION%20ASSETS/analytics.png" width="800" alt="TrustEscrow Analytics Screenshot" />
+</p>
+
+### 📱 Mobile Responsive UI
+
+<p align="center">
+  <img src="SUBMISSION%20ASSETS/ui4.png" width="375" alt="TrustEscrow Mobile UI Screenshot" />
+</p>
+
+### 🔄 CI/CD Pipeline
+
+<p align="center">
+  <img src="SUBMISSION%20ASSETS/cicd.png" width="800" alt="TrustEscrow CI/CD Pipeline" />
+</p>
+
+---
+
+## 🧪 Testing
+
+### Test Summary
+
+| Suite | Tests | Status |
+|-------|-------|--------|
+| Frontend (Vitest) | 1 test | ✅ Passing |
+| Escrow Contract (Rust) | 8 tests | ✅ Passing |
+| **Total** | **9 tests** | ✅ **9/9 Passing** |
+
+### Running Tests
+
+```bash
+# Frontend Tests
+npm --workspace frontend run test
+
+# Rust Contracts Tests
+cargo test
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend Framework** | React + Vite | Fast, responsive single page application |
+| **Language** | JavaScript / TypeScript | Interactive components and contract calls |
+| **Styling** | Vanilla CSS | Custom light-editorial theme matching `credport` |
+| **Smart Contracts** | Soroban (Rust) | On-chain escrow and dispute logic |
+| **Wallet Integration** | Freighter API | Secure transaction building and signing |
+| **Error Monitoring** | Sentry | Production crash reporting |
+| **Analytics** | PostHog | User event tracking |
+| **Hosting** | Netlify | Frontend hosting |
+
+---
+
+## 📁 Project Structure
+
+```
+TrustEscrow/
+├── .github/
+│   └── workflows/
+│       └── ci.yml             # Automated contract build and frontend check
+├── contracts/
+│   ├── focus_forge/           # Main Escrow contract source code
+│   └── focus_forge_rewards/   # Arbitration contract source code
+├── deployments/
+│   └── testnet.json           # Deployed contract records
+├── frontend/
+│   ├── public/
+│   │   └── _redirects         # Netlify SPA routing redirects fallback
+│   ├── src/
+│   │   ├── components/        # Panel, Metric, and Status UI widgets
+│   │   ├── lib/
+│   │   │   ├── skillSprint.js # Freighter connection interface and RPC helpers
+│   │   │   └── contract-config.js
+│   │   ├── App.jsx            # Main app routing, dashboard, and marketing page
+│   │   ├── main.jsx           # Entrypoint with Sentry/PostHog initialized
+│   │   └── styles.css         # Warm light-editorial style definitions
+│   └── package.json
+└── package.json
+```
+
+---
+
+## 🚀 Local Development
+
+### Prerequisites
+- Node.js 18+
+- Rust stable toolchain
+- Freighter wallet browser extension
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/praveengarakot/TrustEscrow.git
+cd TrustEscrow
+
+# Install dependencies
 npm install
-```
 
-### 2. Run contract validation
-```powershell
-npm run contract:check
-```
-
-### 3. Build the frontend bundle
-```powershell
-npm run build:frontend
-```
-
-### 4. Start the app locally
-```powershell
+# Start local dev server
 npm run dev
 ```
 
-## Build, Test, and Deploy Commands
+---
 
-### Contract build
-```powershell
-npm run contract:build
-```
+## 🗺️ Roadmap
 
-### Contract deploy
-```powershell
-$env:STELLAR_ACCOUNT='alice'
-$env:STELLAR_NETWORK='testnet'
-$env:STELLAR_CONTRACT_ALIAS='focus_forge'
-npm run contract:deploy
-```
+### ✅ Level 3 (Complete)
+- Main Escrow contract with project funding and milestone payouts.
+- Event stream synchronization polling from Soroban RPC.
+- Vitest configuration.
 
-### Export frontend config from the deployment record
-```powershell
-npm run export:frontend
-```
+### ✅ Level 4 (Complete)
+- Secondary Arbitration contract with Inter-Contract Communication (ICC).
+- Complete UI redesign matching `credport` light-editorial theme tokens.
+- Fully featured landing page for disconnected Freighter users.
+- Telemetry integrations: PostHog event logging + Sentry exception tracking.
+- Automated Netlify fallback routes configuration.
 
-### Frontend production build
-```powershell
-npm run build:frontend
-```
+### 🔜 Level 5 (Planned)
+- Reputation Scoring contract tracking client/provider history.
+- Multi-token support linking to custom Stellar Asset Contracts (SAC).
+- Project metrics dashboard and advanced search filters.
 
-### Vercel production deploy
-```powershell
-npx --yes --package vercel vercel deploy --prod --yes --logs
-```
+---
 
-## Verification Steps
+## 👨💻 Author
 
-### Contract verification
-```powershell
-stellar contract invoke --id CB5DJ2W5RYFQXVUMONNWUKTXMK7FINUKJI4RVMAPMPZ4OK4ADNO7SXLB --source-account alice --network testnet -- get_global_stats
-```
+**Barsha Saha** — [@barish245](https://github.com/barish245)
 
-### Frontend verification
-1. Open the live demo.
-2. Connect Freighter on Stellar Testnet.
-3. Lock funds and setup a new milestone agreement.
-4. From the Provider/Client dashboard, submit proofs, release milestones, or trigger disputes.
-5. Track events streaming live from the contract.
-
-## Inter-contract Calls and Token/Pool Notes
-
-- Inter-contract calls: `Fully implemented. Disputed milestones trigger automatic dispute escalation on the arbitration contract, and settling disputes calls the main escrow contract back via ICC callback.`
-- Custom token deployed: `No (using virtual USD credit reserves for instant usability)`
-- Liquidity pool deployed: `No`
-- Token or pool address: `Not applicable`
-
-## Submission Checklist
-
-- Public GitHub repository: `Yes`
-- Complete README: `Yes`
-- Live demo link included: `Yes`
-- Mobile responsive screenshot included: `Yes`
-- CI badge included: `Yes`
-- Contract address documented: `Yes`
-- Deployment transaction hashes documented: `Yes`
-- Inter-contract call note included: `Yes`
-- Token/pool note included: `Yes`
-- Live frontend deployed: `Yes`
-- Minimum 10+ meaningful commits: `Yes`
+*Built for the RiseIn Stellar dApp Development Program — Level 4*
