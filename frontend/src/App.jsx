@@ -30,12 +30,6 @@ const emptyWallet = {
   error: ""
 };
 
-const emptyTx = {
-  status: "idle",
-  message: "",
-  hash: ""
-};
-
 function ArrowRightIcon({ size = 16, className }) {
   return (
     <svg viewBox="0 0 20 20" fill="none" width={size} height={size} className={className} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
@@ -104,7 +98,6 @@ function ActivityTicker({ active = false }) {
 export default function App() {
   const queryClient = useQueryClient();
   const [wallet, setWallet] = useState(emptyWallet);
-  const [txState, setTxState] = useState(emptyTx);
   const [page, setPage] = useState("dashboard"); // "dashboard", "create", "provider", "client", "arbitration", "history"
 
   // Create Project Form State
@@ -152,7 +145,6 @@ export default function App() {
     if (typeof window !== "undefined") {
       watcher = new WatchWalletChanges(3000);
       watcher.watch(() => {
-        setTxState(emptyTx);
         syncWallet();
       });
     }
@@ -221,7 +213,7 @@ export default function App() {
     return projects.filter((p) => p.provider === wallet.account);
   }, [projects, wallet.account]);
 
-  async function runLedgerAction(action, pendingMessage, successMessage) {
+  async function runLedgerAction(action) {
     if (!wallet.account) {
       throw new Error("Connect Freighter before sending a transaction.");
     }
@@ -229,82 +221,51 @@ export default function App() {
       throw new Error(`Switch Freighter to ${getNetworkLabel(configuredNetworkPassphrase)}.`);
     }
 
-    setTxState({
-      status: "pending",
-      message: pendingMessage,
-      hash: ""
-    });
+    await action();
 
-    try {
-      const result = await action();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["user-projects", wallet.account] }),
+      queryClient.invalidateQueries({ queryKey: ["global-stats", configuredContractId] }),
+      queryClient.invalidateQueries({ queryKey: ["contract-events", configuredContractId] })
+    ]);
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["user-projects", wallet.account] }),
-        queryClient.invalidateQueries({ queryKey: ["global-stats", configuredContractId] }),
-        queryClient.invalidateQueries({ queryKey: ["contract-events", configuredContractId] })
-      ]);
-
-      setTxState({
-        status: "success",
-        message: successMessage,
-        hash: result.hash
-      });
-      // Return back to dashboard to view the newly created/updated agreement status
-      setPage("dashboard");
-    } catch (error) {
-      const message = parseError(error);
-      setTxState({
-        status: "error",
-        message,
-        hash: ""
-      });
-      throw error;
-    }
+    // Return back to dashboard to view the newly created/updated agreement status
+    setPage("dashboard");
   }
 
   // Mutations
   const createProjectMutation = useMutation({
     mutationFn: ({ provider, title, budget, milestoneTitles, milestoneAmounts }) =>
       runLedgerAction(
-        () => createProject(wallet.account, provider, title, budget, milestoneTitles, milestoneAmounts),
-        "Deploying milestone project to Stellar...",
-        "Escrow project funded & created successfully."
+        () => createProject(wallet.account, provider, title, budget, milestoneTitles, milestoneAmounts)
       )
   });
 
   const submitProofMutation = useMutation({
     mutationFn: ({ projectId, milestoneIndex, proofUrl }) =>
       runLedgerAction(
-        () => submitMilestoneProof(wallet.account, projectId, milestoneIndex, proofUrl),
-        "Submitting milestone work proof to the contract...",
-        "Deliverable proof submitted."
+        () => submitMilestoneProof(wallet.account, projectId, milestoneIndex, proofUrl)
       )
   });
 
   const approveMilestoneMutation = useMutation({
     mutationFn: ({ projectId, milestoneIndex }) =>
       runLedgerAction(
-        () => approveMilestone(wallet.account, projectId, milestoneIndex),
-        "Authorizing milestone payment release...",
-        "Milestone approved and payout released."
+        () => approveMilestone(wallet.account, projectId, milestoneIndex)
       )
   });
 
   const disputeMilestoneMutation = useMutation({
     mutationFn: ({ projectId, milestoneIndex }) =>
       runLedgerAction(
-        () => disputeMilestone(wallet.account, projectId, milestoneIndex),
-        "Escalating milestone to dispute arbitration...",
-        "Dispute raised. Funds locked under arbitration."
+        () => disputeMilestone(wallet.account, projectId, milestoneIndex)
       )
   });
 
   const resolveDisputeMutation = useMutation({
     mutationFn: ({ projectId, milestoneIndex, payout }) =>
       runLedgerAction(
-        () => resolveDispute(wallet.account, projectId, milestoneIndex, payout),
-        "Submitting resolution decision to arbitration contract...",
-        "Dispute resolved and callback settlement executed."
+        () => resolveDispute(wallet.account, projectId, milestoneIndex, payout)
       )
   });
 
@@ -353,13 +314,13 @@ export default function App() {
     const milestoneAmounts = newProjectForm.milestones.map((m) => Number(m.amount));
 
     if (!provider || !title || !budget) {
-      setTxState({ status: "error", message: "All fields are required.", hash: "" });
+      alert("All fields are required.");
       return;
     }
 
     const sumAmounts = milestoneAmounts.reduce((a, b) => a + b, 0);
     if (sumAmounts !== budget) {
-      setTxState({ status: "error", message: `Milestones sum (${sumAmounts}) must match total budget (${budget}).`, hash: "" });
+      alert(`Milestones sum (${sumAmounts}) must match total budget (${budget}).`);
       return;
     }
 
@@ -401,16 +362,7 @@ export default function App() {
     setNewProjectForm((prev) => ({ ...prev, milestones: updated }));
   }
 
-  const txExplorerLink = getExplorerLink(wallet.networkPassphrase, txState.hash);
 
-  const statusMessage =
-    wallet.error ||
-    (wrongNetwork
-      ? `Connected to ${getNetworkLabel(wallet.networkPassphrase)}. Switch Freighter to ${getNetworkLabel(configuredNetworkPassphrase)}.`
-      : txState.message ||
-        (contractReady
-          ? "TrustEscrow is ready to secure milestone agreements."
-          : "Deploy the Soroban contracts and export config before using the app."));
 
   const milestoneStatusLabels = {
     0: { text: "Pending", class: "tag warning" },
