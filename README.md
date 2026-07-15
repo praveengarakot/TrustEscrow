@@ -9,7 +9,7 @@
 [![Live Demo](https://img.shields.io/badge/Live_Demo-trustescrow--stellar.netlify.app-6366f1?style=for-the-badge&logo=netlify)](https://trustescrow-stellar.netlify.app/)
 [![GitHub](https://img.shields.io/badge/Source_Code-praveengarakot%2FTrustEscrow-181717?style=for-the-badge&logo=github)](https://github.com/praveengarakot/TrustEscrow)
 [![Network](https://img.shields.io/badge/Network-Stellar_Testnet-00B4D8?style=for-the-badge&logo=stellar)](https://stellar.expert/explorer/testnet)
-[![Built for RiseIn](https://img.shields.io/badge/Built_for-RiseIn_Level_4-f59e0b?style=for-the-badge)](https://www.risein.com/)
+[![Built for RiseIn](https://img.shields.io/badge/Built_for-RiseIn_Level_3-f59e0b?style=for-the-badge)](https://www.risein.com/)
 
 </div>
 
@@ -21,17 +21,15 @@
 2. [Why Stellar?](#why-stellar)
 3. [Live Deployment](#live-deployment)
 4. [Contract Addresses & Transactions](#contract-addresses--transactions)
-5. [User Onboarding & Feedback](#user-onboarding--feedback)
-6. [Architecture](#architecture)
-7. [Smart Contracts](#smart-contracts)
-8. [Production Hardening (Level 4)](#production-hardening-level-4)
-9. [Tech Stack](#tech-stack)
-10. [Project Structure](#project-structure)
-11. [Testing](#testing)
-12. [CI/CD Pipeline](#cicd-pipeline)
-13. [Local Development](#local-development)
-14. [Roadmap](#roadmap)
-15. [Author](#author)
+5. [Architecture](#architecture)
+6. [Smart Contracts](#smart-contracts)
+7. [Tech Stack](#tech-stack)
+8. [Project Structure](#project-structure)
+9. [Testing](#testing)
+10. [CI/CD Pipeline](#cicd-pipeline)
+11. [Local Development](#local-development)
+12. [Roadmap](#roadmap)
+13. [Author](#author)
 
 ---
 
@@ -70,8 +68,6 @@ TrustEscrow is designed specifically to utilize the native advantages of the Ste
 | **Live dApp** | [trustescrow-stellar.netlify.app](https://trustescrow-stellar.netlify.app/) |
 | **Demo Video** | [Google Drive — Walkthrough Recording](https://drive.google.com/file/d/1dOVVA3A3U-OrmAC22FFON_RBe6q4ycMa/view?usp=sharing) |
 | **GitHub Repo** | [praveengarakot/TrustEscrow](https://github.com/praveengarakot/TrustEscrow) |
-| **User Feedback Form** | [TrustEscrow Usability Survey — Google Forms](https://forms.gle/mHik3thtzZtxCfYg9) |
-| **Onboarded Users & Wallet Interactions** | [Responses Tracker — Google Sheets](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
 
 ---
 
@@ -94,29 +90,6 @@ All contracts are deployed and cross-initialized on the **Stellar Testnet** usin
 | **Escrow Contract — Upload & Deploy** | [`4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35`](https://stellar.expert/explorer/testnet/tx/4ae85dfca86d7700208d5f16ea06257991cc4c741993f410e7e0e973141b0a35) |
 | **Arbitration Contract — Initialize** | [`5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2`](https://stellar.expert/explorer/testnet/tx/5c48b37559807d2308b2dc177248879513c7603965c51319bc6d0de26d550de2) |
 | **Escrow Contract — Initialize** | [`4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a`](https://stellar.expert/explorer/testnet/tx/4385e4a1fee493c338712e2be3034f6c75a19bad68c976d6909a85adc2f3224a) |
-
----
-
-## User Onboarding & Feedback
-
-As part of the Level 4 production MVP requirements, we onboarded real users to validate the complete milestone escrow lifecycle on the Stellar Testnet.
-
-**Onboarding Journey:**
-
-```
-1. User installs Freighter Wallet → Funds testnet account via Friendbot
-2. Client deploys and funds a new milestone agreement
-3. Contractor accepts terms and checks active deliverables
-4. Contractor submits milestone work proof URL
-5. Client reviews and approves → Escrow contract releases payment to contractor
-6. Alternatively, disputes lock funds into Arbitration for resolution
-7. Users submit feedback via the Google Form
-```
-
-| Resource | Link |
-|----------|------|
-| **Feedback Form** | [Submit Feedback](https://forms.gle/mHik3thtzZtxCfYg9) |
-| **User Responses & Wallet Proof** | [View Spreadsheet](https://docs.google.com/spreadsheets/d/1o6dMJz0YSV-a3YyS15c8atqz_9Msq5qfzIUp3X_nKjk/edit?resourcekey=&gid=111961890#gid=111961890) |
 
 ---
 
@@ -190,27 +163,6 @@ Handles dispute records and resolves payout distributions.
 | `escalate_dispute()` | Escrow Contract only | Register new dispute records via ICC |
 | `resolve_dispute()` | Authorized Arbiter | Settle dispute → ICC calls `execute_resolution()` on main contract |
 | `get_dispute()` | Public (read) | Query dispute details |
-
----
-
-## Production Hardening (Level 4)
-
-We implemented robust validation checks, error-handling schemes, and telemetry integrations for our production-ready Level 4 release:
-
-### Smart Contract Security
-*   **ICC Caller Authorization Constraints**: Restricted `execute_resolution()` on the main contract to only accept calls originating from the Arbitration contract address.
-*   **Initialization Guards**: Prevented double initialization on deployed instances.
-*   **Validation Checks**: Enforce positive milestone bounds, non-empty titles, and correct sum matching total budgets.
-
-### Frontend Production Quality
-*   **Light-Editorial Theme**: Transformed the UI layout using the `ui-ux-pro-max` design system with warm paper backgrounds (`#f5f4f0`), clean card segments (`#ffffff`), and contrast typography.
-*   **Top Navigation Layout**: Converted the sidebar into a sticky frosted-glass top navigation bar.
-*   **Deploy Button Fix**: Corrected deployment flags allowing the app to launch agreements using default fallback settings when environment variables are uninitialized.
-*   **SPA Falling Handler**: Configured Netlify routing redirection to handle sub-route refreshes successfully.
-
-### Monitoring & Analytics
-*   **PostHog**: Integrated product analytics tracking for `wallet_connected` and `create_project_initiated` events.
-*   **Sentry**: Added React-based error boundaries and exception monitoring.
 
 ---
 
@@ -342,22 +294,10 @@ npm run dev
 - Event stream synchronization polling from Soroban RPC.
 - Vitest configuration.
 
-### Level 4 (Complete)
-- Secondary Arbitration contract with Inter-Contract Communication (ICC).
-- Complete UI redesign matching `credport` light-editorial theme tokens.
-- Fully featured landing page for disconnected Freighter users.
-- Telemetry integrations: PostHog event logging + Sentry exception tracking.
-- Automated Netlify fallback routes configuration.
-
-### Level 5 (Planned)
-- Reputation Scoring contract tracking client/provider history.
-- Multi-token support linking to custom Stellar Asset Contracts (SAC).
-- Project metrics dashboard and advanced search filters.
-
 ---
 
 ## Author
 
 **Praveen Garakoti** — [@praveengarakot](https://github.com/praveengarakot)
 
-*Built for the RiseIn Stellar dApp Development Program — Level 4*
+*Built for the RiseIn Stellar dApp Development Program — Level 1, 2 & 3*
