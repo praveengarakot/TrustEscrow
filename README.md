@@ -193,7 +193,7 @@ Handles dispute records and resolves payout distributions.
 ### CI/CD Pipeline
 
 <p align="center">
-  <img src="SUBMISSION%20ASSETS/cicd.png" width="800" alt="TrustEscrow CI/CD Pipeline" />
+  <img src="assets/cicd.png" width="800" alt="TrustEscrow CI/CD Pipeline" />
 </p>
 
 ---
